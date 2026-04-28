@@ -1,4 +1,4 @@
-﻿import Link from "next/link"
+import Link from "next/link"
 
 import { Barbell } from "@phosphor-icons/react"
 
@@ -6,20 +6,31 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { getWeekdayLabel } from "@/lib/date"
-import type { Workout, WorkoutPlan } from "@/types/workout"
 import { WorkoutReceipt } from "@/components/workouts/WorkoutReceipt"
+import type { Workout, WorkoutExecution, WorkoutPlan } from "@/types/workout"
 
 export function WorkoutTodayCard({
-  workout,
-  plan,
+  plannedWorkout,
+  plannedPlan,
+  executionToday,
+  executionWorkout,
+  executionPlan,
 }: {
-  workout: Workout | null
-  plan?: WorkoutPlan | null
+  plannedWorkout: Workout | null
+  plannedPlan?: WorkoutPlan | null
+  executionToday?: WorkoutExecution | null
+  executionWorkout?: Workout | null
+  executionPlan?: WorkoutPlan | null
 }) {
+  const hasTrainedToday = Boolean(executionToday)
+  const workout = executionWorkout ?? plannedWorkout
+  const plan = executionPlan ?? plannedPlan
+  const actionLabel = hasTrainedToday ? "Treinar novamente" : "Iniciar treino"
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Treino de hoje</CardTitle>
+        <CardTitle>{hasTrainedToday ? "Treino feito hoje" : "Treino de hoje"}</CardTitle>
       </CardHeader>
       <CardContent>
         {workout ? (
@@ -31,11 +42,17 @@ export function WorkoutTodayCard({
               </div>
               {typeof workout.weekday === "number" ? <Badge>{getWeekdayLabel(workout.weekday)}</Badge> : null}
             </div>
-            <WorkoutReceipt workout={workout} plan={plan ?? undefined} mode="planned" compact />
+            <WorkoutReceipt
+              workout={workout}
+              plan={plan ?? undefined}
+              mode={hasTrainedToday ? "executed" : "planned"}
+              execution={executionToday ?? undefined}
+              compact
+            />
             <Button asChild className="h-11 w-full">
               <Link href={`/workouts?start=${workout.id}`}>
                 <Barbell className="mr-2 size-4" />
-                Iniciar treino
+                {actionLabel}
               </Link>
             </Button>
           </div>

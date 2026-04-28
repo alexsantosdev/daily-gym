@@ -1,21 +1,25 @@
 ﻿"use client"
 
 import Link from "next/link"
+import { useEffect, useRef, useState } from "react"
 import { usePathname } from "next/navigation"
 
 import {
   Barbell,
   CalendarBlank,
+  CaretDown,
   ChartBar,
+  ForkKnife,
   House,
   SignOut,
+  Sparkle,
   Trophy,
   User,
-  ForkKnife,
 } from "@phosphor-icons/react"
 
 import { FloatingActionMenu } from "@/components/layout/FloatingActionMenu"
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav"
+import { ProfileLifecycleManager } from "@/components/profile/ProfileLifecycleManager"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/hooks/useAuth"
@@ -27,6 +31,7 @@ const NAV_ITEMS = [
   { href: "/meals", label: "Refeicoes", icon: ForkKnife },
   { href: "/reports", label: "Relatorios", icon: ChartBar },
   { href: "/groups", label: "Competicao", icon: Trophy },
+  { href: "/personal-ai", label: "Personal IA", icon: Sparkle },
 ]
 
 const MOBILE_NAV_ITEMS = NAV_ITEMS.slice(0, 5)
@@ -34,6 +39,25 @@ const MOBILE_NAV_ITEMS = NAV_ITEMS.slice(0, 5)
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const { user, signOutUser } = useAuth()
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (!menuRef.current) {
+        return
+      }
+
+      if (!menuRef.current.contains(event.target as Node)) {
+        setIsMenuOpen(false)
+      }
+    }
+
+    window.addEventListener("mousedown", handleClickOutside)
+    return () => window.removeEventListener("mousedown", handleClickOutside)
+  }, [])
+
+  const displayName = user?.displayName || user?.email || "Conta"
 
   return (
     <div className="min-h-screen bg-background">
@@ -44,25 +68,61 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <h1 className="text-base font-semibold md:text-lg">Painel</h1>
           </div>
 
-          <div className="flex items-center gap-2.5">
-            <div className="hidden items-center gap-1.5 rounded-xl border border-border/70 bg-muted/60 px-3 py-1.5 text-xs text-muted-foreground md:flex">
-              <User className="size-4" />
-              <span>{user?.displayName || user?.email}</span>
-            </div>
-            <Link
-              href="/groups"
-              className={cn(
-                "inline-flex items-center justify-center rounded-lg border border-border/70 bg-background p-2 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground md:hidden",
-                pathname === "/groups" && "border-primary/40 bg-primary/10 text-primary"
-              )}
-              aria-label="Competicao"
+          <div className="relative" ref={menuRef}>
+            <Button
+              size="sm"
+              variant="outline"
+              className="max-w-[13rem] gap-1.5"
+              onClick={() => setIsMenuOpen((prev) => !prev)}
             >
-              <Trophy className="size-4" />
-            </Link>
-            <Button size="sm" variant="outline" onClick={() => void signOutUser()}>
-              <SignOut className="size-4 md:mr-1" />
-              <span className="hidden md:inline">Sair</span>
+              <User className="size-4" />
+              <span className="truncate text-xs">{displayName}</span>
+              <CaretDown className={cn("size-4 transition-transform", isMenuOpen && "rotate-180")} />
             </Button>
+
+            {isMenuOpen ? (
+              <div className="absolute right-0 top-11 z-50 w-52 rounded-xl border border-border/70 bg-card p-1.5 shadow-sm">
+                <div className="rounded-lg px-2 py-2 text-xs text-muted-foreground">
+                  Conectado como
+                  <p className="mt-1 truncate font-medium text-foreground">{displayName}</p>
+                </div>
+                <Link
+                  href="/personal-ai"
+                  className="inline-flex w-full items-center gap-2 rounded-lg px-2 py-2 text-sm text-foreground hover:bg-muted/60 md:hidden"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  <Sparkle className="size-4" />
+                  Personal IA
+                </Link>
+                <Link
+                  href="/groups"
+                  className="inline-flex w-full items-center gap-2 rounded-lg px-2 py-2 text-sm text-foreground hover:bg-muted/60 md:hidden"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  <Trophy className="size-4" />
+                  Competicao
+                </Link>
+                <Link
+                  href="/profile"
+                  className="inline-flex w-full items-center gap-2 rounded-lg px-2 py-2 text-sm text-foreground hover:bg-muted/60"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  <User className="size-4" />
+                  Perfil
+                </Link>
+                <button
+                  type="button"
+                  className="inline-flex w-full items-center gap-2 rounded-lg px-2 py-2 text-sm text-foreground hover:bg-muted/60"
+                  onClick={() => {
+                    setIsMenuOpen(false)
+                    void signOutUser()
+                  }}
+                >
+                  <SignOut className="size-4" />
+                  Sair
+                </button>
+              </div>
+            ) : null}
           </div>
         </div>
 
@@ -96,6 +156,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <FloatingActionMenu />
       <MobileBottomNav items={MOBILE_NAV_ITEMS} pathname={pathname} />
+      <ProfileLifecycleManager />
     </div>
   )
 }

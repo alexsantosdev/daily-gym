@@ -49,6 +49,7 @@ function mapGroup(id: string, data: Partial<Group>): Group {
     ownerId: data.ownerId ?? "",
     inviteCode: data.inviteCode ?? "",
     memberIds: data.memberIds ?? [],
+    endDate: data.endDate,
     createdAt: toIso(data.createdAt),
     updatedAt: toIso(data.updatedAt),
     status: data.status ?? "active",
@@ -105,12 +106,13 @@ export async function createGroup(input: CreateGroupInput): Promise<Group> {
     ownerId: input.owner.userId,
     inviteCode,
     memberIds: [input.owner.userId],
+    endDate: input.endDate,
     createdAt: now,
     updatedAt: now,
     status: "active",
   }
 
-  const created = await addDoc(collection(db, GROUPS_COLLECTION), payload)
+  const created = await addDoc(collection(db, GROUPS_COLLECTION), stripUndefinedDeep(payload))
 
   const ownerMember: GroupMember = {
     userId: input.owner.userId,

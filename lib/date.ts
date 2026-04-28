@@ -1,6 +1,23 @@
-﻿export function toIsoDate(value: Date | string): string {
-  const date = value instanceof Date ? value : new Date(value)
-  return date.toISOString().slice(0, 10)
+function formatLocalDate(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+
+export function parseIsoDateLocal(value: string): Date {
+  const [year, month, day] = value.split("-").map(Number)
+
+  if (!year || !month || !day) {
+    return new Date(value)
+  }
+
+  return new Date(year, month - 1, day)
+}
+
+export function toIsoDate(value: Date | string): string {
+  const date = value instanceof Date ? value : parseIsoDateLocal(value)
+  return formatLocalDate(date)
 }
 
 export function todayIsoDate(): string {
@@ -46,7 +63,7 @@ export function getDateRangeFromPreset(
 }
 
 export function getLastNDates(days: number, endDate = todayIsoDate()): string[] {
-  const end = new Date(endDate)
+  const end = parseIsoDateLocal(endDate)
   const output: string[] = []
 
   for (let index = days - 1; index >= 0; index -= 1) {
@@ -59,9 +76,9 @@ export function getLastNDates(days: number, endDate = todayIsoDate()): string[] 
 }
 
 export function isDateInRange(targetDate: string, periodStart: string, periodEnd: string): boolean {
-  const value = new Date(targetDate).getTime()
-  const start = new Date(periodStart).getTime()
-  const end = new Date(periodEnd).getTime()
+  const value = parseIsoDateLocal(targetDate).getTime()
+  const start = parseIsoDateLocal(periodStart).getTime()
+  const end = parseIsoDateLocal(periodEnd).getTime()
 
   return value >= start && value <= end
 }
@@ -82,7 +99,7 @@ export function minutesBetween(startedAt?: string, finishedAt?: string): number 
 }
 
 export function getWeekKey(inputDate: string): string {
-  const date = new Date(inputDate)
+  const date = parseIsoDateLocal(inputDate)
   const firstDay = new Date(date.getFullYear(), 0, 1)
   const dayOfYear = Math.floor((date.getTime() - firstDay.getTime()) / 86400000)
   const week = Math.ceil((dayOfYear + firstDay.getDay() + 1) / 7)
@@ -117,7 +134,7 @@ export function formatDatePtBr(value?: string): string {
     return "-"
   }
 
-  const date = new Date(value)
+  const date = parseIsoDateLocal(value)
 
   if (Number.isNaN(date.getTime())) {
     return value
@@ -173,7 +190,7 @@ export function formatWeekdayDatePtBr(value?: string): string {
     return "-"
   }
 
-  const date = new Date(value)
+  const date = parseIsoDateLocal(value)
 
   if (Number.isNaN(date.getTime())) {
     return value

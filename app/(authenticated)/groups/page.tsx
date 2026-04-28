@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { GroupCard } from "@/components/groups/GroupCard"
 import { CreateGroupForm } from "@/components/groups/CreateGroupForm"
 import { JoinGroupForm } from "@/components/groups/JoinGroupForm"
+import { PointsGuideCard } from "@/components/groups/PointsGuideCard"
 import { PageHeader } from "@/components/layout/page-header"
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -84,7 +85,7 @@ export default function GroupsPage() {
       <div className="grid gap-3 md:grid-cols-2">
         <CreateGroupForm
           isSubmitting={isSubmittingCreate}
-          onCreate={async (name) => {
+          onCreate={async (name, endDate) => {
             if (!user?.uid) {
               return
             }
@@ -93,6 +94,7 @@ export default function GroupsPage() {
             try {
               await createGroup({
                 name,
+                endDate,
                 owner: {
                   userId: user.uid,
                   displayName: user.displayName,
@@ -128,6 +130,8 @@ export default function GroupsPage() {
           }}
         />
       </div>
+
+      <PointsGuideCard />
 
       {isLoading ? (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

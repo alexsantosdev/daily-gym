@@ -7,14 +7,21 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
+function getDefaultEndDate() {
+  const date = new Date()
+  date.setDate(date.getDate() + 30)
+  return date.toISOString().slice(0, 10)
+}
+
 export function CreateGroupForm({
   isSubmitting,
   onCreate,
 }: {
   isSubmitting?: boolean
-  onCreate: (name: string) => Promise<void>
+  onCreate: (name: string, endDate: string) => Promise<void>
 }) {
   const [name, setName] = useState("")
+  const [endDate, setEndDate] = useState(getDefaultEndDate())
   const [error, setError] = useState<string | null>(null)
 
   return (
@@ -34,8 +41,16 @@ export function CreateGroupForm({
               return
             }
 
-            void onCreate(name.trim())
-              .then(() => setName(""))
+            if (!endDate) {
+              setError("Informe a data de encerramento.")
+              return
+            }
+
+            void onCreate(name.trim(), endDate)
+              .then(() => {
+                setName("")
+                setEndDate(getDefaultEndDate())
+              })
               .catch((nextError) => {
                 setError(nextError instanceof Error ? nextError.message : "Falha ao criar grupo.")
               })
@@ -48,6 +63,15 @@ export function CreateGroupForm({
               value={name}
               onChange={(event) => setName(event.target.value)}
               placeholder="Ex: Casal Daily Gym"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="group-end-date">Encerramento da competicao</Label>
+            <Input
+              id="group-end-date"
+              type="date"
+              value={endDate}
+              onChange={(event) => setEndDate(event.target.value)}
             />
           </div>
           {error ? <p className="text-xs text-destructive">{error}</p> : null}

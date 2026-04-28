@@ -1,6 +1,6 @@
 "use client"
 
-import { getWeekdayShortLabel } from "@/lib/date"
+import { getWeekdayShortLabel, parseIsoDateLocal } from "@/lib/date"
 import { cn } from "@/lib/utils"
 import type { CalendarStreakStatus } from "@/types/streak"
 
@@ -42,7 +42,7 @@ export function StreakCalendar({ statuses }: { statuses: CalendarStreakStatus[] 
       <p className="text-sm font-medium">Ultimos dias da ofensiva</p>
       <div className="grid grid-cols-7 gap-1.5">
         {statuses.map((item) => {
-          const date = new Date(item.date)
+          const date = parseIsoDateLocal(item.date)
           const day = date.getDay()
 
           return (

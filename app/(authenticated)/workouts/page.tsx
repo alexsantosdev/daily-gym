@@ -33,6 +33,7 @@ export default function WorkoutsPage() {
   const tabParam = searchParams.get("tab")
 
   const { user } = useAuth()
+  const userName = user?.displayName?.trim() || user?.email?.split("@")[0] || "Atleta"
   const {
     plans,
     workouts,
@@ -92,6 +93,28 @@ export default function WorkoutsPage() {
       null
     )
   }, [activePlan, todayWeekday, workouts])
+
+  const todayExecution = useMemo(() => {
+    const today = todayIsoDate()
+    const todayExecutions = executions.filter(
+      (execution) =>
+        execution.date === today &&
+        (execution.status === "executed" || execution.status === "partial" || execution.status === "in_progress")
+    )
+
+    if (todayExecutions.length === 0) {
+      return null
+    }
+
+    return [...todayExecutions].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]
+  }, [executions])
+
+  const todayExecutionWorkout = todayExecution
+    ? workouts.find((workout) => workout.id === todayExecution.workoutId) ?? null
+    : null
+  const todayExecutionPlan = todayExecution
+    ? plans.find((plan) => plan.id === todayExecution.planId) ?? null
+    : null
 
   const hasExecutionToday = useMemo(() => {
     const today = todayIsoDate()
@@ -174,14 +197,20 @@ export default function WorkoutsPage() {
         </TabsList>
 
         <TabsContent value="today" className="space-y-4">
-          <WorkoutTodayCard workout={todayWorkout} plan={activePlan} />
+          <WorkoutTodayCard
+            plannedWorkout={todayWorkout}
+            plannedPlan={activePlan}
+            executionToday={todayExecution}
+            executionWorkout={todayExecutionWorkout}
+            executionPlan={todayExecutionPlan}
+          />
 
           <Card className="border-border/70">
             <CardHeader>
               <CardTitle className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <span>Execucao do treino</span>
                 <Button size="sm" variant="outline" onClick={() => setShowExecutionFlow((prev) => !prev)}>
-                  {showExecutionFlow ? "Ocultar" : "Iniciar treino"}
+                  {showExecutionFlow ? "Ocultar" : hasExecutionToday ? "Treinar novamente" : "Iniciar treino"}
                 </Button>
               </CardTitle>
             </CardHeader>
@@ -352,6 +381,7 @@ export default function WorkoutsPage() {
               planNameById={workoutPlanLookup}
               workoutsById={workoutsById}
               plansById={plansById}
+              userName={userName}
               onDelete={(executionId) => void removeExecutionEntry(executionId)}
               initialOpenedExecutionId={executionIdParam ?? undefined}
             />

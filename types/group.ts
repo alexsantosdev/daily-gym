@@ -24,6 +24,7 @@ export interface Group {
   ownerId: string
   inviteCode: string
   memberIds: string[]
+  endDate?: string
   createdAt: string
   updatedAt: string
   status: GroupStatus
@@ -58,6 +59,7 @@ export interface GroupActivity {
 
 export interface CreateGroupInput {
   name: string
+  endDate?: string
   owner: {
     userId: string
     displayName?: string | null

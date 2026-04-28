@@ -2,10 +2,12 @@
 
 import { Flame, Target, TrendUp } from "@phosphor-icons/react"
 
+import { ShareButton } from "@/components/share/ShareButton"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { formatDatePtBr } from "@/lib/date"
+import { buildStreakShareData } from "@/lib/share"
 import type { StreakSummary } from "@/types/streak"
 
 const STATUS_LABELS = {
@@ -15,20 +17,31 @@ const STATUS_LABELS = {
   pending: "Pendente hoje",
 } as const
 
-export function StreakCard({ summary }: { summary: StreakSummary }) {
+export function StreakCard({
+  summary,
+  userName = "Atleta",
+}: {
+  summary: StreakSummary
+  userName?: string
+}) {
+  const shareData = buildStreakShareData({ userName, summary })
+
   return (
     <Card className="border-primary/25 bg-primary/[0.04]">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center justify-between gap-2 text-base">
+        <CardTitle className="flex flex-col items-start gap-2 text-base sm:flex-row sm:items-center sm:justify-between">
           <span className="inline-flex items-center gap-2">
             <Flame className="size-5 text-primary" weight="fill" />
             Ofensiva
           </span>
-          <Badge variant="secondary">{STATUS_LABELS[summary.todayStatus]}</Badge>
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
+            <Badge variant="secondary">{STATUS_LABELS[summary.todayStatus]}</Badge>
+            <ShareButton cardType="streak" data={shareData} size="xs" label="Compartilhar" />
+          </div>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2">
           <div className="rounded-xl border border-border/70 bg-card p-3">
             <p className="text-xs text-muted-foreground">Atual</p>
             <p className="text-2xl font-semibold">{summary.currentStreak}</p>
@@ -42,8 +55,8 @@ export function StreakCard({ summary }: { summary: StreakSummary }) {
         </div>
 
         <div className="space-y-2 rounded-xl border border-border/70 bg-card p-3">
-          <div className="flex items-center justify-between gap-2 text-xs">
-            <span className="inline-flex items-center gap-1 text-muted-foreground">
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+            <span className="inline-flex min-w-0 items-center gap-1 text-muted-foreground">
               <Target className="size-4" />
               Progresso semanal
             </span>

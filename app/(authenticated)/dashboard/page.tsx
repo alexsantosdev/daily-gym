@@ -342,7 +342,7 @@ export default function DashboardPage() {
         <GroupChallengeBanner data={challengeBanner} />
       ) : null}
 
-      <StreakCard summary={streakSummary} />
+      <StreakCard summary={streakSummary} userName={userName} />
       <Card className="border-border/70">
         <CardContent className="pt-5">
           <StreakCalendar statuses={streakCalendar} />

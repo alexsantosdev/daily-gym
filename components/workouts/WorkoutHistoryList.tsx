@@ -4,9 +4,11 @@ import { useEffect, useState } from "react"
 
 import { CaretDown, ClockCountdown, Receipt, Trash } from "@phosphor-icons/react"
 
+import { ShareButton } from "@/components/share/ShareButton"
 import { WorkoutReceipt } from "@/components/workouts/WorkoutReceipt"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { buildWorkoutShareData } from "@/lib/share"
 import { Separator } from "@/components/ui/separator"
 import { formatDateTimePtBr } from "@/lib/date"
 import { getWorkoutExecutionStatusLabel } from "@/lib/labels"
@@ -21,6 +23,7 @@ export function WorkoutHistoryList({
   plansById,
   onDelete,
   initialOpenedExecutionId,
+  userName = "Atleta",
 }: {
   executions: WorkoutExecution[]
   workoutNameById: Record<string, string>
@@ -29,6 +32,7 @@ export function WorkoutHistoryList({
   plansById: Record<string, WorkoutPlan>
   onDelete: (executionId: string) => void
   initialOpenedExecutionId?: string
+  userName?: string
 }) {
   const [openedExecutionId, setOpenedExecutionId] = useState<string | null>(null)
 
@@ -48,6 +52,17 @@ export function WorkoutHistoryList({
     <div className="overflow-hidden rounded-2xl border border-border/70 bg-card/70">
       {executions.map((execution) => {
         const isOpen = openedExecutionId === execution.id
+        const workout = workoutsById[execution.workoutId]
+        const exercisesTotal = workout?.exercises.length ?? execution.executedExercises.length
+        const firstLoadUsed = execution.executedExercises.find((item) => Boolean(item.loadUsed))?.loadUsed
+        const shareData = buildWorkoutShareData({
+          userName,
+          workoutName: workoutNameById[execution.workoutId] ?? "Treino",
+          planName: planNameById[execution.planId] ?? undefined,
+          execution,
+          exercisesTotal,
+          highlightLoad: firstLoadUsed,
+        })
 
         return (
           <article key={execution.id} className="border-b border-border/60 last:border-b-0">
@@ -83,6 +98,7 @@ export function WorkoutHistoryList({
                     <Receipt data-icon="inline-start" />
                     Comprovante
                   </Button>
+                  <ShareButton cardType="workout" data={shareData} size="xs" label="Compartilhar" />
                   <Button
                     size="xs"
                     className="h-8 w-full min-[430px]:w-auto"

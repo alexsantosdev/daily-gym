@@ -1,4 +1,4 @@
-import { getLastNDates, todayIsoDate, toIsoDate } from "@/lib/date"
+import { getLastNDates, parseIsoDateLocal, todayIsoDate, toIsoDate } from "@/lib/date"
 import type { Activity } from "@/types/activity"
 import type { StreakStatus, StreakSummary } from "@/types/streak"
 import type { Workout, WorkoutExecution, WorkoutPlan } from "@/types/workout"
@@ -6,7 +6,7 @@ import type { Workout, WorkoutExecution, WorkoutPlan } from "@/types/workout"
 const VALID_EXECUTION_STATUSES = new Set(["executed", "partial"])
 
 function parseDate(value: string): Date {
-  const date = new Date(value)
+  const date = parseIsoDateLocal(value)
   return Number.isNaN(date.getTime()) ? new Date() : date
 }
 

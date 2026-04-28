@@ -5,9 +5,11 @@ import Link from "next/link"
 
 import { ArrowUpRight, Barbell, Crown, Fire, Sword } from "@phosphor-icons/react"
 
+import { ShareButton } from "@/components/share/ShareButton"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { buildCompetitionShareData } from "@/lib/share"
 import type { GroupChallengeBannerData } from "@/types/group"
 
 interface GroupChallengeBannerProps {
@@ -54,6 +56,19 @@ function buildMessage(data: GroupChallengeBannerData) {
 
 export function GroupChallengeBanner({ data }: GroupChallengeBannerProps) {
   const message = buildMessage(data)
+  const shareData =
+    data.groupId && data.groupName && data.userRank && typeof data.userPoints === "number"
+      ? buildCompetitionShareData({
+          userName: "Atleta",
+          groupName: data.groupName,
+          rank: data.userRank,
+          points: data.userPoints,
+          rivalName: data.rivalName,
+          rivalPoints: data.rivalPoints,
+          pointsDiff: data.pointsDiff,
+          rivalPhotoUrl: data.rivalPhotoURL ?? undefined,
+        })
+      : null
 
   if (data.mode === "cta") {
     return (
@@ -79,22 +94,23 @@ export function GroupChallengeBanner({ data }: GroupChallengeBannerProps) {
           <Badge variant="secondary">Competicao</Badge>
           <Badge variant="outline">Grupo: {data.groupName}</Badge>
           <Badge variant="outline">Voce #{data.userRank ?? "-"}</Badge>
+          {shareData ? <ShareButton cardType="competition" data={shareData} size="xs" /> : null}
         </div>
 
         <div className="grid gap-3 lg:grid-cols-[1.2fr_1fr]">
           <div className="space-y-2">
             <p className="text-sm font-semibold">{message.title}</p>
             <p className="text-sm text-muted-foreground">{message.description}</p>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-col gap-2 min-[430px]:flex-row min-[430px]:flex-wrap">
               {data.groupId ? (
-                <Button asChild size="sm" className="h-10">
+                <Button asChild size="sm" className="h-10 w-full min-[430px]:w-auto">
                   <Link href={`/groups/${data.groupId}`}>
                     Abrir competicao
                     <ArrowUpRight className="ml-1 size-4" />
                   </Link>
                 </Button>
               ) : null}
-              <Button asChild size="sm" variant="outline" className="h-10">
+              <Button asChild size="sm" variant="outline" className="h-10 w-full min-[430px]:w-auto">
                 <Link href="/workouts?start=1">
                   <Barbell className="mr-1 size-4" />
                   Iniciar treino
@@ -104,22 +120,22 @@ export function GroupChallengeBanner({ data }: GroupChallengeBannerProps) {
           </div>
 
           <div className="space-y-2 rounded-xl border border-border/70 bg-card/85 p-3">
-            <div className="flex items-center justify-between text-xs">
-              <span className="inline-flex items-center gap-1 text-muted-foreground">
+            <div className="flex items-start justify-between gap-2 text-xs">
+              <span className="inline-flex min-w-0 items-center gap-1 text-muted-foreground">
                 <Fire className="size-3.5 text-primary" />
                 Voce
               </span>
               <span className="font-semibold">{data.userPoints ?? 0} pts</span>
             </div>
-            <div className="flex items-center justify-between text-xs">
-              <span className="inline-flex items-center gap-1 text-muted-foreground">
+            <div className="flex items-start justify-between gap-2 text-xs">
+              <span className="inline-flex min-w-0 items-center gap-1 text-muted-foreground">
                 <Crown className="size-3.5 text-primary" />
-                Lider ({data.leaderName ?? "-"})
+                <span className="truncate">Lider ({data.leaderName ?? "-"})</span>
               </span>
               <span className="font-semibold">{data.leaderPoints ?? 0} pts</span>
             </div>
             {data.rivalName ? (
-              <div className="flex items-center justify-between text-xs">
+              <div className="flex items-start justify-between gap-2 text-xs">
                 <span className="inline-flex min-w-0 items-center gap-1 text-muted-foreground">
                   {data.rivalPhotoURL ? (
                     <Image

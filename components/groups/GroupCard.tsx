@@ -7,6 +7,7 @@ import { Users } from "@phosphor-icons/react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { formatDatePtBr } from "@/lib/date"
 import type { Group } from "@/types/group"
 
 interface GroupCardProps {
@@ -31,6 +32,9 @@ export function GroupCard({ group, membersCount, leaderName, leaderPoints }: Gro
           <span>{membersCount} membros</span>
         </div>
         <p className="text-xs text-muted-foreground">Codigo: {group.inviteCode}</p>
+        {group.endDate ? (
+          <p className="text-xs text-muted-foreground">Encerra em: {formatDatePtBr(group.endDate)}</p>
+        ) : null}
         <div className="rounded-lg border border-border/70 bg-muted/30 p-2 text-xs">
           <p className="font-medium text-foreground">Lider da semana</p>
           <p className="text-muted-foreground">
