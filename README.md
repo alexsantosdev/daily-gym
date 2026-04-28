@@ -155,3 +155,75 @@ Foco:
 ---
 
 ## 📂 Estrutura do Projeto
+app/
+components/
+dashboard/
+workouts/
+meals/
+activities/
+calendar/
+groups/
+reports/
+layout/
+lib/
+services/
+types/
+hooks/
+
+
+---
+
+## 🔐 Configuração de Ambiente
+
+Crie um arquivo `.env.local`:
+
+```env
+NEXT_PUBLIC_FIREBASE_API_KEY=
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
+NEXT_PUBLIC_FIREBASE_APP_ID=
+
+OPENAI_API_KEY= # opcional (para relatórios futuros)
+```
+---
+
+## 🚀 Rodando o Projeto
+pnpm install
+pnpm dev
+🧪 Scripts
+pnpm dev
+pnpm build
+pnpm lint
+pnpm typecheck
+📌 Roadmap
+ Integração real com GPT para análises
+ Notificações (lembretes e competição)
+ Dashboards mais avançados
+ PWA (instalável no celular)
+ Suporte offline
+ Evolução da gamificação
+
+ ---
+ 
+## 🤝 Contribuição
+
+Projeto inicialmente focado para uso pessoal, mas estruturado para escalar.
+
+---
+
+## 📄 Licença
+
+MIT (ou privada, conforme decisão)
+
+💡 Filosofia
+
+Isso não é só um app de registro.
+É um sistema para construir consistência através de visibilidade, simplicidade e competição.
+
+---
+
+## 🔥 Autor
+
+Desenvolvido por @alexsantosdev com foco em usabilidade real, rotina e disciplina.
