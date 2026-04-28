@@ -8,7 +8,7 @@ import type { ShareCardData } from "@/types/share"
 export const ShareCardGenerator = forwardRef<HTMLDivElement, { data: ShareCardData }>(
   function ShareCardGenerator({ data }, ref) {
     return (
-      <div ref={ref} className="w-full max-w-[360px]">
+      <div ref={ref}>
         <ShareCard data={data} />
       </div>
     )

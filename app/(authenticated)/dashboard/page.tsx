@@ -3,8 +3,6 @@
 import { useEffect, useMemo, useState } from "react"
 
 import {
-  Bar,
-  BarChart,
   CartesianGrid,
   Line,
   LineChart,
@@ -22,9 +20,7 @@ import { GroupChallengeBanner } from "@/components/groups/GroupChallengeBanner"
 import { Badge } from "@/components/ui/badge"
 import { StreakCalendar } from "@/components/streaks/StreakCalendar"
 import { StreakCard } from "@/components/streaks/StreakCard"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { calculateGroupScore } from "@/lib/groupScore"
 import { getDateRangeFromPreset, getLastNDates, getTodayWeekday } from "@/lib/date"
 import { hasAnyActivityForDate } from "@/lib/streaks"
@@ -310,10 +306,8 @@ export default function DashboardPage() {
   const streakBadgeActive =
     streakSummary.todayStatus === "completed" || streakSummary.weeklyCompleted > 0
   const hasActiveDayToday = hasAnyActivityForDate(today, executions, activities)
-  const recentActivities = activities.slice(0, 4)
-
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <section className="space-y-3">
         <Badge
           className={cn(
@@ -330,7 +324,7 @@ export default function DashboardPage() {
         <div className="space-y-1">
           <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Ola, {userName}</h1>
           <p className="text-sm text-muted-foreground">
-            Aqui esta seu resumo de treino, refeicoes e consistencia para manter sua evolucao em dia.
+            Aqui esta seu resumo diario.
             {hasActiveDayToday ? " Voce ja se manteve ativo hoje." : " Vamos ativar o dia com um treino ou atividade."}
           </p>
         </div>
@@ -342,12 +336,10 @@ export default function DashboardPage() {
         <GroupChallengeBanner data={challengeBanner} />
       ) : null}
 
-      <StreakCard summary={streakSummary} userName={userName} />
-      <Card className="border-border/70">
-        <CardContent className="pt-5">
-          <StreakCalendar statuses={streakCalendar} />
-        </CardContent>
-      </Card>
+      <section className="space-y-3">
+        <StreakCard summary={streakSummary} userName={userName} />
+        <StreakCalendar statuses={streakCalendar} />
+      </section>
 
       {loading ? (
         <div className="grid grid-cols-1 gap-3 min-[390px]:grid-cols-2 xl:grid-cols-4">
@@ -385,104 +377,53 @@ export default function DashboardPage() {
         </section>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="space-y-4 lg:col-span-2">
-          <TodaySummary
-            todayWorkout={todayWorkout}
-            mealsToday={todayMeals}
-            lastExecution={lastExecuted}
-            todayExecution={todayExecution}
-          />
-          <Card className="border-border/70">
-            <CardHeader>
-              <CardTitle>Atividades recentes</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {recentActivities.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Sem atividades recentes.</p>
-              ) : (
-                recentActivities.map((activity) => (
-                  <div key={activity.id} className="rounded-lg border border-border/70 p-2.5">
-                    <p className="text-sm font-medium">{activity.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {activity.date} • {activity.durationMinutes ?? 0} min
-                    </p>
-                  </div>
-                ))
-              )}
-            </CardContent>
-          </Card>
-          <Card className="border-border/70">
-            <CardHeader>
-              <CardTitle>Acoes rapidas</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <QuickActions />
-            </CardContent>
-          </Card>
+      <TodaySummary
+        todayWorkout={todayWorkout}
+        mealsToday={todayMeals}
+        lastExecution={lastExecuted}
+        todayExecution={todayExecution}
+      />
+
+      <section className="space-y-3">
+        <h2 className="text-sm font-medium text-muted-foreground">Atalhos rapidos</h2>
+        <QuickActions />
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-sm font-medium text-muted-foreground">Frequencia semanal</h2>
+        <div className="h-56 rounded-2xl border border-border/60 bg-card/70 p-2">
+          {report ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={report.workoutCharts.workoutsByWeek}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                <XAxis
+                  dataKey="week"
+                  tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  allowDecimals={false}
+                  tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <Tooltip
+                  contentStyle={{
+                    borderRadius: 12,
+                    borderColor: "var(--border)",
+                    background: "var(--card)",
+                    color: "var(--card-foreground)",
+                  }}
+                />
+                <Line type="monotone" dataKey="executed" stroke="var(--chart-1)" strokeWidth={2} />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <Skeleton className="h-full" />
+          )}
         </div>
-
-        <Card className="border-border/70">
-          <CardHeader>
-            <CardTitle>Graficos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Tabs defaultValue="planned">
-              <TabsList className="grid h-auto grid-cols-1 gap-1 sm:grid-cols-2 sm:h-10">
-                <TabsTrigger value="planned">Planejados x executados</TabsTrigger>
-                <TabsTrigger value="frequency">Frequencia</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="planned" className="h-56 pt-3 sm:h-64">
-                {report ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={report.workoutCharts.plannedVsExecuted}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                      <XAxis dataKey="week" tick={{ fill: "var(--muted-foreground)", fontSize: 11 }} axisLine={false} tickLine={false} />
-                      <YAxis allowDecimals={false} tick={{ fill: "var(--muted-foreground)", fontSize: 11 }} axisLine={false} tickLine={false} />
-                      <Tooltip
-                        contentStyle={{
-                          borderRadius: 12,
-                          borderColor: "var(--border)",
-                          background: "var(--card)",
-                          color: "var(--card-foreground)",
-                        }}
-                      />
-                      <Bar dataKey="planned" fill="var(--chart-4)" radius={6} />
-                      <Bar dataKey="executed" fill="var(--chart-2)" radius={6} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <Skeleton className="h-full" />
-                )}
-              </TabsContent>
-
-              <TabsContent value="frequency" className="h-56 pt-3 sm:h-64">
-                {report ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={report.workoutCharts.workoutsByWeek}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                      <XAxis dataKey="week" tick={{ fill: "var(--muted-foreground)", fontSize: 11 }} axisLine={false} tickLine={false} />
-                      <YAxis allowDecimals={false} tick={{ fill: "var(--muted-foreground)", fontSize: 11 }} axisLine={false} tickLine={false} />
-                      <Tooltip
-                        contentStyle={{
-                          borderRadius: 12,
-                          borderColor: "var(--border)",
-                          background: "var(--card)",
-                          color: "var(--card-foreground)",
-                        }}
-                      />
-                      <Line type="monotone" dataKey="executed" stroke="var(--chart-1)" strokeWidth={2} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <Skeleton className="h-full" />
-                )}
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
-      </div>
+      </section>
     </div>
   )
 }

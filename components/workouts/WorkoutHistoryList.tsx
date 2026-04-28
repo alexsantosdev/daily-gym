@@ -9,8 +9,6 @@ import { WorkoutReceipt } from "@/components/workouts/WorkoutReceipt"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { buildWorkoutShareData } from "@/lib/share"
-import { Separator } from "@/components/ui/separator"
-import { formatDateTimePtBr } from "@/lib/date"
 import { getWorkoutExecutionStatusLabel } from "@/lib/labels"
 import { cn } from "@/lib/utils"
 import type { Workout, WorkoutExecution, WorkoutPlan } from "@/types/workout"
@@ -49,7 +47,7 @@ export function WorkoutHistoryList({
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-border/70 bg-card/70">
+    <div className="space-y-2">
       {executions.map((execution) => {
         const isOpen = openedExecutionId === execution.id
         const workout = workoutsById[execution.workoutId]
@@ -62,11 +60,13 @@ export function WorkoutHistoryList({
           execution,
           exercisesTotal,
           highlightLoad: firstLoadUsed,
+          workout,
+          workoutPlan: plansById[execution.planId],
         })
 
         return (
-          <article key={execution.id} className="border-b border-border/60 last:border-b-0">
-            <div className="flex flex-col gap-3 px-3 py-3.5 sm:px-4">
+          <article key={execution.id} className="rounded-2xl border border-border/70 bg-card/70">
+            <div className="flex flex-col gap-3 px-3 py-3.5">
               <button
                 type="button"
                 className="w-full text-left"
@@ -116,29 +116,6 @@ export function WorkoutHistoryList({
 
               {isOpen ? (
                 <div className="flex flex-col gap-3 border-t border-border/60 pt-3 text-xs">
-                  <div className="grid gap-2 min-[430px]:grid-cols-2">
-                    <p className="text-muted-foreground">
-                      Inicio: <span className="text-foreground">{formatDateTimePtBr(execution.startedAt)}</span>
-                    </p>
-                    <p className="text-muted-foreground">
-                      Fim: <span className="text-foreground">{formatDateTimePtBr(execution.finishedAt)}</span>
-                    </p>
-                    <p className="text-muted-foreground">
-                      Check-in: <span className="text-foreground">{formatDateTimePtBr(execution.checkinAt)}</span>
-                    </p>
-                    <p className="text-muted-foreground">
-                      Check-out: <span className="text-foreground">{formatDateTimePtBr(execution.checkoutAt)}</span>
-                    </p>
-                  </div>
-
-                  {execution.notes ? (
-                    <p className="break-words rounded-lg border border-border/60 bg-muted/30 p-2 text-muted-foreground">
-                      Observacoes: {execution.notes}
-                    </p>
-                  ) : null}
-
-                  <Separator />
-
                   <WorkoutReceipt
                     mode="executed"
                     plan={plansById[execution.planId]}

@@ -28,8 +28,8 @@ export function TodaySummary({
       <CardHeader>
         <CardTitle>Hoje</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="rounded-xl border border-border/70 bg-muted/30 p-3">
+      <CardContent className="space-y-3">
+        <section className="space-y-2 rounded-xl border border-border/60 bg-muted/25 p-3">
           <p className="text-xs uppercase tracking-wide text-muted-foreground">Treino sugerido do dia</p>
           {todayWorkout ? (
             <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -54,17 +54,17 @@ export function TodaySummary({
               )}
             </div>
           ) : (
-            <p className="mt-1 text-sm text-muted-foreground">Nenhum treino associado ao dia atual.</p>
+              <p className="mt-1 text-sm text-muted-foreground">Nenhum treino associado ao dia atual.</p>
           )}
-        </div>
+        </section>
 
-        <div className="rounded-xl border border-border/70 bg-muted/30 p-3">
+        <section className="space-y-2 rounded-xl border border-border/60 bg-muted/25 p-3">
           <p className="text-xs uppercase tracking-wide text-muted-foreground">Progresso de refeicoes</p>
           <p className="mt-1 text-sm font-medium">{mealsToday.length} refeicao(oes) registradas</p>
           <Progress value={mealsProgress} className="mt-2" />
-        </div>
+        </section>
 
-        <div className="rounded-xl border border-border/70 bg-muted/30 p-3">
+        <section className="space-y-2 rounded-xl border border-border/60 bg-muted/25 p-3">
           <p className="text-xs uppercase tracking-wide text-muted-foreground">Ultimo treino</p>
           {lastExecution ? (
             <Button asChild variant="ghost" className="mt-1 h-auto w-full justify-between rounded-lg px-2 py-2">
@@ -78,7 +78,7 @@ export function TodaySummary({
           ) : (
             <p className="text-sm text-muted-foreground">Sem execucao recente.</p>
           )}
-        </div>
+        </section>
       </CardContent>
     </Card>
   )

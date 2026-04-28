@@ -15,6 +15,21 @@ import type { PersistedReport, SaveReportInput } from "@/types/report"
 
 const COLLECTION_NAME = "reports"
 
+function stripUndefinedDeep<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return value.map((item) => stripUndefinedDeep(item)) as T
+  }
+
+  if (value && typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .filter(([, itemValue]) => itemValue !== undefined)
+      .map(([key, itemValue]) => [key, stripUndefinedDeep(itemValue)])
+    return Object.fromEntries(entries) as T
+  }
+
+  return value
+}
+
 function mapPersistedReport(id: string, data: Partial<PersistedReport>): PersistedReport {
   return {
     id,
@@ -46,8 +61,9 @@ export async function saveReport(input: SaveReportInput) {
     createdAt: now,
   }
 
-  const created = await addDoc(collection(db, COLLECTION_NAME), payload)
-  return mapPersistedReport(created.id, payload)
+  const sanitizedPayload = stripUndefinedDeep(payload)
+  const created = await addDoc(collection(db, COLLECTION_NAME), sanitizedPayload)
+  return mapPersistedReport(created.id, sanitizedPayload)
 }
 
 export async function listSavedReports(userId: string) {

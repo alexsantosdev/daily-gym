@@ -41,20 +41,20 @@ export function StreakCard({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2">
-          <div className="rounded-xl border border-border/70 bg-card p-3">
+        <div className="grid grid-cols-2 gap-3">
+          <div>
             <p className="text-xs text-muted-foreground">Atual</p>
             <p className="text-2xl font-semibold">{summary.currentStreak}</p>
             <p className="text-xs text-muted-foreground">treinos seguidos</p>
           </div>
-          <div className="rounded-xl border border-border/70 bg-card p-3">
+          <div>
             <p className="text-xs text-muted-foreground">Melhor</p>
             <p className="text-2xl font-semibold">{summary.longestStreak}</p>
             <p className="text-xs text-muted-foreground">recorde pessoal</p>
           </div>
         </div>
 
-        <div className="space-y-2 rounded-xl border border-border/70 bg-card p-3">
+        <div className="space-y-2 rounded-xl border border-border/70 bg-background/70 p-3">
           <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
             <span className="inline-flex min-w-0 items-center gap-1 text-muted-foreground">
               <Target className="size-4" />

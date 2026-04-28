@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useEffect, useMemo, useState } from "react"
 
@@ -17,6 +17,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts"
+import { FunnelSimple, X } from "@phosphor-icons/react"
 
 import { PageHeader } from "@/components/layout/page-header"
 import { ChartCard } from "@/components/reports/ChartCard"
@@ -71,6 +72,7 @@ export default function ReportsPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [isLoadingSavedReports, setIsLoadingSavedReports] = useState(false)
   const [isGeneratingGpt, setIsGeneratingGpt] = useState(false)
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false)
 
   useEffect(() => {
     if (!user?.uid) {
@@ -123,32 +125,33 @@ export default function ReportsPage() {
     <div className="space-y-5">
       <PageHeader
         title="Relatorios"
-        description="Filtros reutilizaveis, graficos com Recharts e persistencia opcional em reports."
+        description="Graficos e indicadores com filtros rapidos para leitura melhor no celular."
       />
 
-      <Card className="border-border/70">
-        <CardHeader>
-          <CardTitle>Filtros</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ReportFilters
-            value={filters}
-            plans={plans}
-            workouts={workouts}
-            onApply={(nextFilters) => {
-              setFilters(nextFilters)
-              setGptAnalysis(null)
-            }}
-          />
-        </CardContent>
-      </Card>
+      <section className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border/70 bg-card/60 p-3 sm:p-4">
+        <p className="text-sm text-muted-foreground">Escolha periodo e tipo para gerar seus indicadores.</p>
+        <Button variant="outline" onClick={() => setIsFiltersOpen(true)}>
+          <FunnelSimple className="mr-1 size-4" />
+          Filtros
+        </Button>
+      </section>
+
+      <div className="hidden rounded-2xl border border-border/70 bg-card/60 p-4 md:block">
+        <ReportFilters
+          value={filters}
+          plans={plans}
+          workouts={workouts}
+          onApply={(nextFilters) => {
+            setFilters(nextFilters)
+            setGptAnalysis(null)
+          }}
+        />
+      </div>
 
       <div className="grid gap-3 md:grid-cols-2">
-        <Card className="border-border/70">
-          <CardHeader>
-            <CardTitle>Acoes de relatorio</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-wrap gap-2">
+        <section className="rounded-2xl border border-border/70 bg-card/60 p-3 sm:p-4">
+          <p className="mb-2 text-sm font-medium">Acoes</p>
+          <div className="flex flex-wrap gap-2">
             <Button
               onClick={async () => {
                 if (!report || !filters.userId) {
@@ -217,30 +220,26 @@ export default function ReportsPage() {
             >
               {isSaving ? "Salvando..." : "Salvar relatorio"}
             </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </section>
 
-        <Card className="border-border/70">
-          <CardHeader>
-            <CardTitle>Analise GPT</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {gptAnalysis ? (
-              <div className="space-y-3">
-                <p className="text-sm">{gptAnalysis.summary}</p>
-                <div className="flex flex-wrap gap-2">
-                  {gptAnalysis.strengths.map((item) => (
-                    <Badge key={item} variant="secondary">
-                      {item}
-                    </Badge>
-                  ))}
-                </div>
+        <section className="rounded-2xl border border-border/70 bg-card/60 p-3 sm:p-4">
+          <p className="mb-2 text-sm font-medium">Analise GPT</p>
+          {gptAnalysis ? (
+            <div className="space-y-3">
+              <p className="text-sm">{gptAnalysis.summary}</p>
+              <div className="flex flex-wrap gap-2">
+                {gptAnalysis.strengths.map((item) => (
+                  <Badge key={item} variant="secondary">
+                    {item}
+                  </Badge>
+                ))}
               </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">Gere uma analise mock para este periodo.</p>
-            )}
-          </CardContent>
-        </Card>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">Gere uma analise mock para este periodo.</p>
+          )}
+        </section>
       </div>
 
       <Tabs defaultValue="workouts">
@@ -252,7 +251,7 @@ export default function ReportsPage() {
 
         <TabsContent value="workouts" className="space-y-4">
           <div className="grid gap-4 lg:grid-cols-2">
-            <ChartCard title="Treinos por semana" description="Bar chart de frequencia semanal">
+            <ChartCard title="Treinos por semana" description="Frequencia semanal">
               <div className="h-64 sm:h-72">
                 {isLoadingData || !report ? (
                   <Skeleton className="h-full" />
@@ -309,7 +308,7 @@ export default function ReportsPage() {
               </div>
             </ChartCard>
 
-            <ChartCard title="Distribuicao por grupo muscular" description="Pie chart por execucao">
+            <ChartCard title="Grupo muscular" description="Distribuicao de execucoes">
               <div className="h-64 sm:h-72">
                 {isLoadingData || !report ? (
                   <Skeleton className="h-full" />
@@ -335,7 +334,7 @@ export default function ReportsPage() {
             </ChartCard>
           </div>
 
-          <ChartCard title="Evolucao de carga por exercicio" description="Line chart da carga usada">
+          <ChartCard title="Evolucao de carga" description="Progressao por exercicio">
             <div className="h-64 sm:h-72">
               {isLoadingData || !report ? (
                 <Skeleton className="h-full" />
@@ -356,7 +355,7 @@ export default function ReportsPage() {
 
         <TabsContent value="meals" className="space-y-4">
           <div className="grid gap-4 lg:grid-cols-2">
-            <ChartCard title="Refeicoes por dia" description="Bar chart diario">
+            <ChartCard title="Refeicoes por dia" description="Distribuicao diaria">
               <div className="h-64 sm:h-72">
                 {isLoadingData || !report ? (
                   <Skeleton className="h-full" />
@@ -374,7 +373,7 @@ export default function ReportsPage() {
               </div>
             </ChartCard>
 
-            <ChartCard title="Tipos de refeicao" description="Pie chart de distribuicao">
+            <ChartCard title="Tipos de refeicao" description="Distribuicao por tipo">
               <div className="h-64 sm:h-72">
                 {isLoadingData || !report ? (
                   <Skeleton className="h-full" />
@@ -401,7 +400,7 @@ export default function ReportsPage() {
             </ChartCard>
           </div>
 
-          <ChartCard title="Timeline por horario" description="Lista cronologica das refeicoes no periodo">
+          <ChartCard title="Timeline" description="Refeicoes recentes no periodo">
             {isLoadingData || !report ? (
               <Skeleton className="h-32" />
             ) : report.mealCharts.timeline.length === 0 ? (
@@ -421,24 +420,16 @@ export default function ReportsPage() {
           </ChartCard>
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <Card className="border-border/70">
-              <CardHeader>
-                <CardTitle>Consistencia alimentar</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-semibold">{report?.mealStats.mealsCount ?? 0}</p>
-                <p className="text-xs text-muted-foreground">Total de refeicoes no periodo</p>
-              </CardContent>
-            </Card>
-            <Card className="border-border/70">
-              <CardHeader>
-                <CardTitle>Dias com refeicao livre</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-semibold">{report?.mealStats.freeMealDays ?? 0}</p>
-                <p className="text-xs text-muted-foreground">Dias com tag de refeicao livre</p>
-              </CardContent>
-            </Card>
+            <section className="rounded-2xl border border-border/70 bg-card/60 p-3">
+              <p className="text-xs text-muted-foreground">Consistencia alimentar</p>
+              <p className="text-2xl font-semibold">{report?.mealStats.mealsCount ?? 0}</p>
+              <p className="text-xs text-muted-foreground">Total de refeicoes no periodo</p>
+            </section>
+            <section className="rounded-2xl border border-border/70 bg-card/60 p-3">
+              <p className="text-xs text-muted-foreground">Dias com refeicao livre</p>
+              <p className="text-2xl font-semibold">{report?.mealStats.freeMealDays ?? 0}</p>
+              <p className="text-xs text-muted-foreground">Dias com tag de refeicao livre</p>
+            </section>
           </div>
         </TabsContent>
 
@@ -454,25 +445,17 @@ export default function ReportsPage() {
 
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {generalItems.map((item) => (
-              <Card key={item.label}>
-                <CardHeader>
-                  <CardTitle className="text-sm text-muted-foreground">{item.label}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-xl font-semibold">{item.value}</p>
-                </CardContent>
-              </Card>
+              <section key={item.label} className="rounded-2xl border border-border/70 bg-card/60 p-3">
+                <p className="text-sm text-muted-foreground">{item.label}</p>
+                <p className="text-xl font-semibold">{item.value}</p>
+              </section>
             ))}
           </div>
 
-          <Card className="border-border/70">
-            <CardHeader>
-              <CardTitle>Resumo textual</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">{report?.summaryText ?? "Sem resumo no momento."}</p>
-            </CardContent>
-          </Card>
+          <section className="rounded-2xl border border-border/70 bg-card/60 p-3">
+            <p className="mb-1 text-sm font-medium">Resumo textual</p>
+            <p className="text-sm text-muted-foreground">{report?.summaryText ?? "Sem resumo no momento."}</p>
+          </section>
         </TabsContent>
       </Tabs>
 
@@ -532,7 +515,31 @@ export default function ReportsPage() {
           )}
         </CardContent>
       </Card>
+
+      {isFiltersOpen ? (
+        <div className="fixed inset-0 z-[90] bg-background/80 backdrop-blur-sm md:hidden">
+          <div className="flex h-[100dvh] w-full flex-col bg-background">
+            <header className="flex items-center justify-between border-b border-border/70 px-4 py-3">
+              <p className="text-sm font-semibold">Filtros de relatorio</p>
+              <Button type="button" variant="ghost" size="icon-sm" onClick={() => setIsFiltersOpen(false)}>
+                <X className="size-4" />
+              </Button>
+            </header>
+            <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+              <ReportFilters
+                value={filters}
+                plans={plans}
+                workouts={workouts}
+                onApply={(nextFilters) => {
+                  setFilters(nextFilters)
+                  setGptAnalysis(null)
+                  setIsFiltersOpen(false)
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }
-

@@ -1,0 +1,267 @@
+﻿.story-card {
+  position: relative;
+  width: 1080px;
+  height: 1920px;
+  aspect-ratio: 9 / 16;
+  overflow: hidden;
+  background-image: url('/images/card/background.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  color: #ffffff;
+  font-family: var(--font-sans), Inter, Geist, system-ui, -apple-system, sans-serif;
+}
+
+.story-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.22), rgba(0, 0, 0, 0.72));
+}
+
+.content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 48px;
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.brand {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #ffffff;
+}
+
+.badge {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 0, 128, 0.26);
+  color: #ffffff;
+  border-radius: 999px;
+  padding: 10px 20px;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.badgeWorkout {
+  background: rgba(255, 45, 154, 0.26);
+}
+
+.badgeStreak {
+  background: rgba(255, 77, 166, 0.24);
+}
+
+.badgeCompetition {
+  background: rgba(255, 0, 128, 0.34);
+}
+
+.badgeActivity {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.badgeRecap {
+  background: rgba(255, 45, 154, 0.2);
+}
+
+.main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  gap: 30px;
+}
+
+.kicker {
+  margin: 0;
+  color: #ff4da6;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.hero {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.headline {
+  margin: 0;
+  font-size: 104px;
+  line-height: 0.9;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+
+.headlineAccent {
+  color: #ff2d9a;
+  text-shadow: 0 0 26px rgba(255, 0, 128, 0.6);
+}
+
+.subtitle {
+  margin: 0;
+  color: #cfcfcf;
+  font-size: 34px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.trainBlock {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+  border-radius: 16px;
+  padding: 24px;
+}
+
+.workoutName {
+  margin: 0;
+  font-size: 42px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.goal {
+  margin: 8px 0 0;
+  color: #cfcfcf;
+  font-size: 24px;
+}
+
+.highlight {
+  margin: 14px 0 0;
+  color: #9a9a9a;
+  font-size: 22px;
+  line-height: 1.25;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.metric {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+  border-radius: 16px;
+  padding: 18px;
+  min-height: 150px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.metricLabel {
+  color: #9a9a9a;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.metricValue {
+  margin-top: 10px;
+  font-size: 48px;
+  line-height: 1;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.streak {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 0, 128, 0.25);
+  box-shadow: 0 0 42px rgba(255, 0, 128, 0.38);
+  border-radius: 16px;
+  padding: 20px;
+  font-size: 34px;
+  font-weight: 700;
+}
+
+.streakNeutral {
+  background: rgba(255, 255, 255, 0.03);
+  box-shadow: none;
+}
+
+.challengeBlock {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 0, 128, 0.16);
+  box-shadow: 0 0 34px rgba(255, 0, 128, 0.26);
+  border-radius: 16px;
+  padding: 20px;
+}
+
+.challengeTitle {
+  margin: 0;
+  color: #ff4da6;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.challengeValue {
+  margin: 8px 0 0;
+  color: #ffffff;
+  font-size: 30px;
+  line-height: 1.2;
+  font-weight: 700;
+}
+
+.emotion {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+  border-radius: 16px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.motivation {
+  margin: 0;
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1.12;
+  color: #ffffff;
+}
+
+.socialHook {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.25;
+  color: #cfcfcf;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 24px;
+  color: #cfcfcf;
+}
+
+.meta {
+  color: #9a9a9a;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+}

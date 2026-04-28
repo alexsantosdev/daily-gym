@@ -38,6 +38,7 @@ interface WorkoutExecutionFormProps {
   workouts: Workout[]
   initialPlanId?: string
   initialWorkoutId?: string
+  immersive?: boolean
   isSubmitting?: boolean
   hasExecutionToday?: boolean
   onSubmit: (payload: Omit<CreateWorkoutExecutionInput, "userId">) => Promise<void>
@@ -169,6 +170,7 @@ export function WorkoutExecutionForm({
   workouts,
   initialPlanId,
   initialWorkoutId,
+  immersive = false,
   isSubmitting,
   hasExecutionToday,
   onSubmit,
@@ -569,7 +571,7 @@ export function WorkoutExecutionForm({
   }
 
   return (
-    <div className="space-y-4">
+    <div className={cn("space-y-4", immersive && "pb-28")}>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="execution-plan">Plano</Label>
@@ -608,7 +610,7 @@ export function WorkoutExecutionForm({
         </div>
       </div>
 
-      {selectedWorkout ? (
+      {selectedWorkout && !immersive ? (
         <div className="space-y-2">
           <Button type="button" variant="outline" onClick={() => setShowReceipt((prev) => !prev)}>
             {showReceipt ? "Ocultar ficha" : "Mostrar ficha"}
@@ -625,7 +627,7 @@ export function WorkoutExecutionForm({
         </div>
       ) : null}
 
-      <div className="rounded-xl border border-border/70 bg-muted/30 p-3">
+      <div className={cn("rounded-xl border border-border/70 bg-muted/30 p-3", immersive && "rounded-lg border-border/50 bg-muted/20")}>
         <p className="text-xs text-muted-foreground">Status</p>
         <p className="text-sm font-medium">{getWorkoutExecutionStatusLabel(status)}</p>
         {startedAt ? <p className="mt-1 text-xs text-muted-foreground">Inicio: {formatDateTime(startedAt)}</p> : null}
@@ -637,7 +639,7 @@ export function WorkoutExecutionForm({
         ) : null}
       </div>
 
-      <div className="grid gap-2 sm:grid-cols-3">
+      <div className={cn("grid gap-2", immersive ? "grid-cols-1" : "sm:grid-cols-3")}>
         <div className="space-y-2">
           <Label htmlFor="execution-date">Data</Label>
           <Input id="execution-date" type="date" value={date} onChange={(event) => setDate(event.target.value)} />
@@ -670,7 +672,7 @@ export function WorkoutExecutionForm({
       </div>
 
       {selectedWorkout ? (
-        <div className="space-y-3 rounded-xl border border-border/70 bg-muted/20 p-3">
+        <div className={cn("space-y-3 rounded-xl border border-border/70 bg-muted/20 p-3", immersive && "border-border/50 bg-transparent p-0")}>
           <div className="flex items-center justify-between gap-2">
             <p className="text-sm font-medium">Progresso do treino</p>
             <p className="text-xs text-muted-foreground">
@@ -684,17 +686,18 @@ export function WorkoutExecutionForm({
               const plannedExercise = selectedWorkout.exercises[index]
 
               return (
-                <Card
+                <div
                   key={`${exercise.exerciseName}-${index}`}
                   className={cn(
-                    "transition-colors",
+                    "rounded-xl border border-border/70 bg-card p-3 transition-colors",
+                    immersive && "shadow-none",
                     exercise.completed && "border-primary/30 bg-primary/5",
                     exercise.exerciseStartedAt &&
                       !exercise.completed &&
                       "border-accent bg-accent/40"
                   )}
                 >
-                  <CardContent className="space-y-3 pt-4">
+                  <div className="space-y-3">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                       <div>
                         <p
@@ -782,19 +785,21 @@ export function WorkoutExecutionForm({
                       />
                     </div>
 
-                    <Textarea
-                      placeholder="Observacao opcional"
-                      value={exercise.notes ?? ""}
-                      onChange={(event) =>
-                        updateExercise(index, (item) => ({
-                          ...item,
-                          notes: event.target.value,
-                          exerciseStartedAt: item.exerciseStartedAt ?? nowLocalDateTime(),
-                        }))
-                      }
-                    />
-                  </CardContent>
-                </Card>
+                    {!immersive ? (
+                      <Textarea
+                        placeholder="Observacao opcional"
+                        value={exercise.notes ?? ""}
+                        onChange={(event) =>
+                          updateExercise(index, (item) => ({
+                            ...item,
+                            notes: event.target.value,
+                            exerciseStartedAt: item.exerciseStartedAt ?? nowLocalDateTime(),
+                          }))
+                        }
+                      />
+                    ) : null}
+                  </div>
+                </div>
               )
             })}
           </div>
@@ -835,12 +840,19 @@ export function WorkoutExecutionForm({
         )}
       </div>
 
-      <div className="grid gap-2 sm:grid-cols-2">
+      <div
+        className={cn(
+          "grid gap-2 sm:grid-cols-2",
+          immersive &&
+            "fixed inset-x-0 bottom-0 z-20 border-t border-border/70 bg-background/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-6px_24px_-16px_rgba(0,0,0,0.35)] sm:grid-cols-2 md:static md:border-0 md:bg-transparent md:px-0 md:pb-0 md:pt-0 md:shadow-none"
+        )}
+      >
         <Button
           type="button"
           variant="outline"
           onClick={() => void saveManualExecuted()}
           disabled={!workoutId || isSubmitting || isUploadingPhoto}
+          className={cn(immersive && "h-11")}
         >
           <CheckCircle className="mr-2 size-4" />
           {isUploadingPhoto ? "Enviando foto..." : "Marcar como executado"}

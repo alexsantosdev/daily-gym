@@ -1,8 +1,20 @@
 ﻿"use client"
 
+import Image from "next/image"
 import { useEffect, useMemo, useState } from "react"
 
-import { PageHeader } from "@/components/layout/page-header"
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts"
+
 import { MonthlyCheckinDrawer } from "@/components/profile/MonthlyCheckinDrawer"
 import { ProfileProgressTimeline } from "@/components/profile/ProfileProgressTimeline"
 import { Badge } from "@/components/ui/badge"
@@ -21,6 +33,15 @@ import {
 } from "@/services/monthlyCheckinService"
 import { getUserProfile, updateUserProfile } from "@/services/profileService"
 import type { UserMonthlyCheckin, UserProfile } from "@/types/profile"
+
+function getInitials(name: string) {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("")
+}
 
 export default function ProfilePage() {
   const { user } = useAuth()
@@ -63,6 +84,7 @@ export default function ProfilePage() {
         setProfile(loadedProfile)
         setCheckins(loadedCheckins)
         setCurrentMonthCheckin(loadedCurrent)
+
         if (needMonthlyCheckin) {
           setShowMonthlyDrawer(true)
         }
@@ -89,11 +111,46 @@ export default function ProfilePage() {
     [profile?.displayName, user?.displayName, user?.email]
   )
 
+  const sortedCheckins = useMemo(
+    () =>
+      [...checkins].sort((a, b) => {
+        if (a.year !== b.year) {
+          return a.year - b.year
+        }
+
+        return a.month - b.month
+      }),
+    [checkins]
+  )
+
+  const weightProgressData = useMemo(
+    () =>
+      sortedCheckins.map((checkin) => ({
+        label: `${String(checkin.month).padStart(2, "0")}/${String(checkin.year).slice(-2)}`,
+        peso: checkin.weightKg,
+        gordura: checkin.bodyFatPercentage ?? null,
+      })),
+    [sortedCheckins]
+  )
+
+  const monthlyBarsData = useMemo(
+    () =>
+      sortedCheckins.map((checkin) => ({
+        label: `${String(checkin.month).padStart(2, "0")}/${String(checkin.year).slice(-2)}`,
+        cintura: checkin.waistCm ?? 0,
+        peitoral: checkin.chestCm ?? 0,
+        quadril: checkin.hipCm ?? 0,
+      })),
+    [sortedCheckins]
+  )
+
+  const latestCheckin = sortedCheckins[sortedCheckins.length - 1] ?? null
+
   if (isLoading) {
     return (
       <div className="flex flex-col gap-4">
-        <Skeleton className="h-24" />
-        <Skeleton className="h-64" />
+        <Skeleton className="h-56" />
+        <Skeleton className="h-40" />
         <Skeleton className="h-80" />
       </div>
     )
@@ -101,12 +158,186 @@ export default function ProfilePage() {
 
   return (
     <div className="space-y-5">
-      <PageHeader
-        title="Perfil"
-        description="Edite seus dados de personalizacao e acompanhe sua evolucao mensal."
-      />
-
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
+
+      <Card className="border-border/70">
+        <CardContent className="flex flex-col items-center gap-3 py-6">
+          {user?.photoURL ? (
+            <Image
+              src={user.photoURL}
+              alt={profileName}
+              width={128}
+              height={128}
+              unoptimized
+              className="size-28 rounded-full border border-border/70 object-cover"
+            />
+          ) : (
+            <div className="flex size-28 items-center justify-center rounded-full border border-border/70 bg-muted text-3xl font-semibold text-foreground">
+              {getInitials(profileName)}
+            </div>
+          )}
+
+          <h1 className="text-center text-2xl font-black uppercase tracking-wide text-foreground sm:text-3xl">
+            {profileName}
+          </h1>
+
+          <div className="flex flex-wrap justify-center gap-2">
+            <Badge variant={profile?.aiConsent ? "default" : "secondary"}>
+              {profile?.aiConsent ? "IA ATIVA" : "IA DESATIVADA"}
+            </Badge>
+            <Badge variant="outline">PERFIL</Badge>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-border/70">
+        <CardHeader>
+          <CardTitle>Painel corporal</CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="rounded-xl border border-border/70 bg-muted/20 p-3">
+            <p className="text-xs text-muted-foreground">Peso</p>
+            <p className="mt-1 text-lg font-semibold">{profile?.weightKg ? `${profile.weightKg.toFixed(1)} kg` : "-"}</p>
+          </div>
+          <div className="rounded-xl border border-border/70 bg-muted/20 p-3">
+            <p className="text-xs text-muted-foreground">Altura</p>
+            <p className="mt-1 text-lg font-semibold">{profile?.heightCm ? `${profile.heightCm} cm` : "-"}</p>
+          </div>
+          <div className="rounded-xl border border-border/70 bg-muted/20 p-3">
+            <p className="text-xs text-muted-foreground">Treino/semana</p>
+            <p className="mt-1 text-lg font-semibold">{profile?.trainingFrequencyGoal ?? "-"}</p>
+          </div>
+          <div className="rounded-xl border border-border/70 bg-muted/20 p-3">
+            <p className="text-xs text-muted-foreground">Tempo por treino</p>
+            <p className="mt-1 text-lg font-semibold">
+              {profile?.availableTimeMinutes ? `${profile.availableTimeMinutes} min` : "-"}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card className="border-border/70">
+          <CardHeader>
+            <CardTitle>Evolucao de peso mensal</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {weightProgressData.length > 0 ? (
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={weightProgressData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                    <XAxis dataKey="label" tick={{ fill: "var(--muted-foreground)", fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fill: "var(--muted-foreground)", fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <Tooltip
+                      contentStyle={{
+                        borderRadius: 12,
+                        borderColor: "var(--border)",
+                        background: "var(--card)",
+                        color: "var(--card-foreground)",
+                      }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="peso"
+                      stroke="var(--chart-1)"
+                      strokeWidth={2}
+                      dot={{ r: 3 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Sem dados mensais suficientes para o grafico.</p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/70">
+          <CardHeader>
+            <CardTitle>Medidas por mes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {monthlyBarsData.length > 0 ? (
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={monthlyBarsData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                    <XAxis dataKey="label" tick={{ fill: "var(--muted-foreground)", fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fill: "var(--muted-foreground)", fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <Tooltip
+                      contentStyle={{
+                        borderRadius: 12,
+                        borderColor: "var(--border)",
+                        background: "var(--card)",
+                        color: "var(--card-foreground)",
+                      }}
+                    />
+                    <Bar dataKey="cintura" fill="var(--chart-2)" radius={6} />
+                    <Bar dataKey="peitoral" fill="var(--chart-3)" radius={6} />
+                    <Bar dataKey="quadril" fill="var(--chart-4)" radius={6} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Sem medidas registradas para o grafico.</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="border-border/70">
+        <CardHeader>
+          <CardTitle>Resumo da evolucao corporal</CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="rounded-xl border border-border/70 bg-muted/20 p-3">
+            <p className="text-xs text-muted-foreground">Check-ins</p>
+            <p className="mt-1 text-lg font-semibold">{checkins.length}</p>
+          </div>
+          <div className="rounded-xl border border-border/70 bg-muted/20 p-3">
+            <p className="text-xs text-muted-foreground">Ultimo peso</p>
+            <p className="mt-1 text-lg font-semibold">
+              {latestCheckin?.weightKg ? `${latestCheckin.weightKg.toFixed(1)} kg` : "-"}
+            </p>
+          </div>
+          <div className="rounded-xl border border-border/70 bg-muted/20 p-3">
+            <p className="text-xs text-muted-foreground">Gordura corporal</p>
+            <p className="mt-1 text-lg font-semibold">
+              {latestCheckin?.bodyFatPercentage ? `${latestCheckin.bodyFatPercentage}%` : "-"}
+            </p>
+          </div>
+          <div className="rounded-xl border border-border/70 bg-muted/20 p-3">
+            <p className="text-xs text-muted-foreground">Humor ultimo mes</p>
+            <p className="mt-1 text-lg font-semibold uppercase">{latestCheckin?.mood ?? "-"}</p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <ProfileProgressTimeline checkins={checkins} />
+
+      <Card className="border-border/70">
+        <CardHeader>
+          <CardTitle className="flex flex-wrap items-center justify-between gap-2">
+            <span>Check-in mensal</span>
+            <Button type="button" size="sm" onClick={() => setShowMonthlyDrawer(true)}>
+              Atualizar mes
+            </Button>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-2 text-sm text-muted-foreground">
+          {currentMonthCheckin ? (
+            <>
+              <p>
+                {profileName}, seu check-in mais recente e {currentMonthCheckin.month}/{currentMonthCheckin.year}.
+              </p>
+              <p>Peso atual no check-in: {currentMonthCheckin.weightKg.toFixed(1)} kg.</p>
+            </>
+          ) : (
+            <p>Voce ainda nao registrou o check-in deste mes.</p>
+          )}
+        </CardContent>
+      </Card>
 
       <Card className="border-border/70">
         <CardHeader>
@@ -130,6 +361,7 @@ export default function ProfilePage() {
 
                   setIsSavingProfile(true)
                   setError(null)
+
                   try {
                     await updateUserProfile(user.uid, {
                       displayName: profile.displayName,
@@ -337,31 +569,6 @@ export default function ProfilePage() {
         </CardContent>
       </Card>
 
-      <Card className="border-border/70">
-        <CardHeader>
-          <CardTitle className="flex flex-wrap items-center justify-between gap-2">
-            <span>Check-in mensal</span>
-            <Button type="button" size="sm" onClick={() => setShowMonthlyDrawer(true)}>
-              Atualizar mes
-            </Button>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-2 text-sm text-muted-foreground">
-          {currentMonthCheckin ? (
-            <>
-              <p>
-                {profileName}, seu check-in mais recente e {currentMonthCheckin.month}/{currentMonthCheckin.year}.
-              </p>
-              <p>Peso atual no check-in: {currentMonthCheckin.weightKg.toFixed(1)} kg.</p>
-            </>
-          ) : (
-            <p>Voce ainda nao registrou o check-in deste mes.</p>
-          )}
-        </CardContent>
-      </Card>
-
-      <ProfileProgressTimeline checkins={checkins} />
-
       {user?.uid ? (
         <MonthlyCheckinDrawer
           open={showMonthlyDrawer}
@@ -375,10 +582,12 @@ export default function ProfilePage() {
               const withoutSameMonth = prev.filter(
                 (item) => !(item.month === checkin.month && item.year === checkin.year)
               )
+
               return [checkin, ...withoutSameMonth].sort((a, b) => {
                 if (a.year !== b.year) {
                   return b.year - a.year
                 }
+
                 return b.month - a.month
               })
             })

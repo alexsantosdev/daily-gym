@@ -1,7 +1,5 @@
 import Link from "next/link"
 
-import { Barbell } from "@phosphor-icons/react"
-
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -25,7 +23,6 @@ export function WorkoutTodayCard({
   const hasTrainedToday = Boolean(executionToday)
   const workout = executionWorkout ?? plannedWorkout
   const plan = executionPlan ?? plannedPlan
-  const actionLabel = hasTrainedToday ? "Treinar novamente" : "Iniciar treino"
 
   return (
     <Card>
@@ -49,12 +46,6 @@ export function WorkoutTodayCard({
               execution={executionToday ?? undefined}
               compact
             />
-            <Button asChild className="h-11 w-full">
-              <Link href={`/workouts?start=${workout.id}`}>
-                <Barbell className="mr-2 size-4" />
-                {actionLabel}
-              </Link>
-            </Button>
           </div>
         ) : (
           <div className="space-y-3">

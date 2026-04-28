@@ -1,3 +1,5 @@
+import type { WorkoutShareAnalysisPayload, WorkoutShareCardData } from "@/types/workoutShare"
+
 export type ShareCardType =
   | "workout"
   | "activity"
@@ -23,4 +25,8 @@ export interface ShareCardData {
   badge?: string
   highlight?: string
   footer?: string
+  workoutStory?: WorkoutShareCardData
+  workoutAnalysisPayload?: WorkoutShareAnalysisPayload
+  shareCaption?: string
+  hashtags?: string[]
 }

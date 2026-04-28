@@ -1,6 +1,6 @@
-"use client"
+﻿"use client"
 
-import { useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 
 import { ArrowSquareOut, DownloadSimple, X } from "@phosphor-icons/react"
 
@@ -10,11 +10,13 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import {
   downloadShareImage,
-  generateShareImage,
   getShareFileName,
   getShareTitle,
   shareImage,
+  applyWorkoutAnalysisToShareData,
 } from "@/lib/share"
+import { requestWorkoutShareAnalysis } from "@/services/workoutAIAnalysisService"
+import { generateAIShareImagePlaceholder, generateHtmlShareImage } from "@/services/shareImageService"
 import type { ShareCardData, ShareCardType } from "@/types/share"
 
 export function ShareButton({
@@ -32,17 +34,66 @@ export function ShareButton({
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
-  const cardRef = useRef<HTMLDivElement>(null)
+  const [isPreparing, setIsPreparing] = useState(false)
+  const [resolvedData, setResolvedData] = useState<ShareCardData>(data)
+  const previewCardRef = useRef<HTMLDivElement>(null)
+  const generatorCardRef = useRef<HTMLDivElement>(null)
   const filename = useMemo(() => getShareFileName(cardType), [cardType])
 
+  useEffect(() => {
+    if (!isOpen) {
+      return
+    }
+
+    let isMounted = true
+
+    async function prepareShareData() {
+      setIsPreparing(true)
+      setResolvedData(data)
+
+      try {
+        if (cardType === "workout" && data.workoutAnalysisPayload) {
+          const analysis = await requestWorkoutShareAnalysis(data.workoutAnalysisPayload)
+          if (isMounted) {
+            const analyzedData = applyWorkoutAnalysisToShareData(data, analysis)
+            void generateAIShareImagePlaceholder(analyzedData)
+            setResolvedData(analyzedData)
+          }
+          return
+        }
+
+        if (isMounted) {
+          setResolvedData(data)
+        }
+      } catch (error) {
+        console.warn("Falha ao gerar analise de share card. Usando dados locais.", error)
+        if (isMounted) {
+          setResolvedData(data)
+        }
+      } finally {
+        if (isMounted) {
+          setIsPreparing(false)
+        }
+      }
+    }
+
+    void prepareShareData()
+
+    return () => {
+      isMounted = false
+    }
+  }, [cardType, data, isOpen])
+
   async function createImageBlob() {
-    if (!cardRef.current) {
+    const targetElement = generatorCardRef.current ?? previewCardRef.current
+
+    if (!targetElement) {
       throw new Error("Preview indisponivel para gerar imagem.")
     }
 
     setIsGenerating(true)
     try {
-      return await generateShareImage(cardRef.current)
+      return await generateHtmlShareImage(targetElement)
     } finally {
       setIsGenerating(false)
     }
@@ -71,23 +122,34 @@ export function ShareButton({
 
       {isOpen ? (
         <div className="fixed inset-0 z-[90] flex items-end justify-center bg-background/75 p-3 backdrop-blur-sm sm:items-center">
-          <Card className="w-full max-w-md border-border/70">
-            <CardContent className="space-y-4 pt-4">
-              <div className="flex items-center justify-between gap-2">
+          <Card className="flex max-h-[92dvh] w-full max-w-lg flex-col overflow-hidden border-border/70">
+            <CardContent className="flex h-full flex-col gap-4 p-4">
+              <div className="sticky top-0 z-10 flex items-center justify-between gap-2 bg-card">
                 <p className="text-sm font-semibold">Preview de compartilhamento</p>
                 <Button type="button" variant="outline" size="icon-sm" onClick={() => setIsOpen(false)}>
                   <X />
                 </Button>
               </div>
 
-              <ShareCardPreview data={data} cardRef={cardRef} />
+              <div className="min-h-0 flex-1 overflow-y-auto py-1">
+                {isPreparing ? (
+                  <div className="rounded-xl border border-border/70 bg-muted/30 px-3 py-6 text-center">
+                    <p className="text-sm font-medium">Criando seu card...</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Estamos preparando um visual premium com base no seu treino real.
+                    </p>
+                  </div>
+                ) : (
+                  <ShareCardPreview data={resolvedData} cardRef={previewCardRef} />
+                )}
+              </div>
 
-              <div className="grid grid-cols-1 gap-2 min-[390px]:grid-cols-2">
+              <div className="grid grid-cols-1 gap-2 border-t border-border/60 pt-3 min-[390px]:grid-cols-2">
                 <Button
                   type="button"
                   className="h-11"
                   onClick={() => void handleShare()}
-                  disabled={isGenerating}
+                  disabled={isGenerating || isPreparing}
                 >
                   <ArrowSquareOut data-icon="inline-start" />
                   {isGenerating ? "Gerando..." : "Compartilhar"}
@@ -97,7 +159,7 @@ export function ShareButton({
                   variant="outline"
                   className="h-11"
                   onClick={() => void handleDownload()}
-                  disabled={isGenerating}
+                  disabled={isGenerating || isPreparing}
                 >
                   <DownloadSimple data-icon="inline-start" />
                   {isGenerating ? "Gerando..." : "Baixar imagem"}
@@ -109,7 +171,7 @@ export function ShareButton({
       ) : null}
 
       <div className="pointer-events-none fixed -left-[9999px] -top-[9999px]">
-        <ShareCardGenerator data={data} />
+        <ShareCardGenerator ref={generatorCardRef} data={resolvedData} />
       </div>
     </>
   )

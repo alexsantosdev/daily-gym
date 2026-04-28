@@ -1,12 +1,13 @@
-"use client"
+﻿"use client"
 
 import { useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 
-import { ArrowLeft, PencilSimpleLine, Trash } from "@phosphor-icons/react"
+import { PencilSimpleLine, Plus, Trash } from "@phosphor-icons/react"
 
 import { PageHeader } from "@/components/layout/page-header"
 import { WorkoutExecutionForm } from "@/components/workouts/WorkoutExecutionForm"
+import { WorkoutExecutionSheet } from "@/components/workouts/WorkoutExecutionSheet"
 import { WorkoutForm } from "@/components/workouts/workout-form"
 import { WorkoutPlanForm, type WorkoutPlanFormValues } from "@/components/workouts/workout-plan-form"
 import { WorkoutHistoryList } from "@/components/workouts/WorkoutHistoryList"
@@ -14,7 +15,7 @@ import { WorkoutPlanList } from "@/components/workouts/WorkoutPlanList"
 import { WorkoutTodayCard } from "@/components/workouts/WorkoutTodayCard"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { getTodayWeekday, getWeekdayLabel, todayIsoDate } from "@/lib/date"
@@ -61,13 +62,14 @@ export default function WorkoutsPage() {
         : "today"
   )
 
-  const [showExecutionFlow, setShowExecutionFlow] = useState(startMode)
-
   const [editingWorkout, setEditingWorkout] = useState<Workout | undefined>()
   const [editingPlan, setEditingPlan] = useState<WorkoutPlan | undefined>()
+  const [isPlanFormOpen, setIsPlanFormOpen] = useState(false)
+  const [isWorkoutFormOpen, setIsWorkoutFormOpen] = useState(false)
   const [isSubmittingWorkout, setIsSubmittingWorkout] = useState(false)
   const [isSubmittingPlan, setIsSubmittingPlan] = useState(false)
   const [isSubmittingExecution, setIsSubmittingExecution] = useState(false)
+  const [isExecutionSheetOpen, setIsExecutionSheetOpen] = useState(startMode)
 
   const workoutPlanLookup = useMemo(() => Object.fromEntries(plans.map((plan) => [plan.id, plan.name])), [plans])
 
@@ -137,47 +139,40 @@ export default function WorkoutsPage() {
 
   if (startMode) {
     return (
-      <div className="space-y-4">
-        <PageHeader
-          title="Execucao de treino"
-          description="Foco total na ficha do treino para iniciar e finalizar sua sessao."
+      <WorkoutExecutionSheet
+        open={isExecutionSheetOpen}
+        onOpenChange={(open) => {
+          setIsExecutionSheetOpen(open)
+          if (!open) {
+            router.replace("/workouts?tab=today")
+          }
+        }}
+        title="Execucao de treino"
+        subtitle="Foco total na ficha"
+      >
+        <WorkoutExecutionForm
+          plans={plans}
+          workouts={workouts}
+          immersive
+          initialPlanId={executionInitialPlanId}
+          initialWorkoutId={executionInitialWorkoutId}
+          hasExecutionToday={hasExecutionToday}
+          isSubmitting={isSubmittingExecution}
+          onSubmit={async (payload) => {
+            setIsSubmittingExecution(true)
+            try {
+              await createExecutionEntry(payload)
+            } finally {
+              setIsSubmittingExecution(false)
+            }
+          }}
+          onExecutionCompleted={() => {
+            setActiveTab("history")
+            setIsExecutionSheetOpen(false)
+            router.replace("/workouts?tab=history")
+          }}
         />
-
-        <Card className="border-border/70">
-          <CardHeader>
-            <CardTitle className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <span>Ficha de treino</span>
-              <Button type="button" variant="outline" size="sm" onClick={() => window.history.back()}>
-                <ArrowLeft className="mr-1 size-4" />
-                Voltar
-              </Button>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <WorkoutExecutionForm
-              plans={plans}
-              workouts={workouts}
-              initialPlanId={executionInitialPlanId}
-              initialWorkoutId={executionInitialWorkoutId}
-              hasExecutionToday={hasExecutionToday}
-              isSubmitting={isSubmittingExecution}
-              onSubmit={async (payload) => {
-                setIsSubmittingExecution(true)
-                try {
-                  await createExecutionEntry(payload)
-                } finally {
-                  setIsSubmittingExecution(false)
-                }
-              }}
-              onExecutionCompleted={() => {
-                setActiveTab("history")
-                setShowExecutionFlow(false)
-                router.replace("/workouts?tab=history")
-              }}
-            />
-          </CardContent>
-        </Card>
-      </div>
+      </WorkoutExecutionSheet>
     )
   }
 
@@ -185,7 +180,7 @@ export default function WorkoutsPage() {
     <div className="space-y-5">
       <PageHeader
         title="Treinos"
-        description="Centro completo para treino do dia, planos, cadastro e historico de execucoes."
+        description="Rotina do dia, planos e historico em uma experiencia mais direta no celular."
       />
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -205,48 +200,42 @@ export default function WorkoutsPage() {
             executionPlan={todayExecutionPlan}
           />
 
-          <Card className="border-border/70">
-            <CardHeader>
-              <CardTitle className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <span>Execucao do treino</span>
-                <Button size="sm" variant="outline" onClick={() => setShowExecutionFlow((prev) => !prev)}>
-                  {showExecutionFlow ? "Ocultar" : hasExecutionToday ? "Treinar novamente" : "Iniciar treino"}
-                </Button>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {!showExecutionFlow ? (
-                <p className="text-sm text-muted-foreground">
-                  Clique em &quot;Iniciar treino&quot; para abrir a ficha e registrar sua execucao.
-                </p>
-              ) : (
-                <WorkoutExecutionForm
-                  plans={plans}
-                  workouts={workouts}
-                  initialPlanId={executionInitialPlanId}
-                  initialWorkoutId={executionInitialWorkoutId}
-                  hasExecutionToday={hasExecutionToday}
-                  isSubmitting={isSubmittingExecution}
-                  onSubmit={async (payload) => {
-                    setIsSubmittingExecution(true)
-                    try {
-                      await createExecutionEntry(payload)
-                    } finally {
-                      setIsSubmittingExecution(false)
-                    }
-                  }}
-                />
-              )}
-            </CardContent>
-          </Card>
+          <section className="space-y-2">
+            <Button className="h-12 w-full" onClick={() => setIsExecutionSheetOpen(true)}>
+              {hasExecutionToday ? "Treinar novamente" : "Iniciar treino"}
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              Abra a ficha em tela cheia para executar seu treino sem distracoes.
+            </p>
+          </section>
+
+          {activePlan ? (
+            <section className="rounded-xl border border-border/60 bg-card/50 p-3">
+              <p className="text-xs text-muted-foreground">Plano ativo</p>
+              <p className="text-sm font-medium">{activePlan.name}</p>
+              <p className="text-xs text-muted-foreground">Dia atual: {getWeekdayLabel(todayWeekday)}</p>
+            </section>
+          ) : null}
         </TabsContent>
 
         <TabsContent value="plans" className="space-y-4">
-          <Card className="border-border/70">
-            <CardHeader>
-              <CardTitle>{editingPlan ? "Editar plano" : "Novo plano"}</CardTitle>
-            </CardHeader>
-            <CardContent>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm text-muted-foreground">Planos de treino ativos e inativos.</p>
+            <Button
+              variant={isPlanFormOpen ? "outline" : "default"}
+              size="sm"
+              onClick={() => {
+                setEditingPlan(undefined)
+                setIsPlanFormOpen((prev) => !prev)
+              }}
+            >
+              <Plus className="mr-1 size-4" />
+              {isPlanFormOpen ? "Fechar formulario" : "Novo plano"}
+            </Button>
+          </div>
+
+          {isPlanFormOpen || editingPlan ? (
+            <section className="rounded-2xl border border-border/70 bg-card/60 p-3 sm:p-4">
               <WorkoutPlanForm
                 initialPlan={editingPlan}
                 isSubmitting={isSubmittingPlan}
@@ -260,24 +249,47 @@ export default function WorkoutsPage() {
                     } else {
                       await createPlan(values)
                     }
+                    setIsPlanFormOpen(false)
                   } finally {
                     setIsSubmittingPlan(false)
                   }
                 }}
-                onCancel={editingPlan ? () => setEditingPlan(undefined) : undefined}
+                onCancel={() => {
+                  setEditingPlan(undefined)
+                  setIsPlanFormOpen(false)
+                }}
               />
-            </CardContent>
-          </Card>
+            </section>
+          ) : null}
 
-          <WorkoutPlanList plans={plans} onEdit={(plan) => setEditingPlan(plan)} onDelete={(planId) => void removePlan(planId)} />
+          <WorkoutPlanList
+            plans={plans}
+            onEdit={(plan) => {
+              setEditingPlan(plan)
+              setIsPlanFormOpen(true)
+            }}
+            onDelete={(planId) => void removePlan(planId)}
+          />
         </TabsContent>
 
         <TabsContent value="workouts" className="space-y-4">
-          <Card className="border-border/70">
-            <CardHeader>
-              <CardTitle>{editingWorkout ? "Editar treino" : "Novo treino"}</CardTitle>
-            </CardHeader>
-            <CardContent>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm text-muted-foreground">Cadastre treinos por dia da semana e por plano.</p>
+            <Button
+              variant={isWorkoutFormOpen ? "outline" : "default"}
+              size="sm"
+              onClick={() => {
+                setEditingWorkout(undefined)
+                setIsWorkoutFormOpen((prev) => !prev)
+              }}
+            >
+              <Plus className="mr-1 size-4" />
+              {isWorkoutFormOpen ? "Fechar formulario" : "Novo treino"}
+            </Button>
+          </div>
+
+          {isWorkoutFormOpen || editingWorkout ? (
+            <section className="rounded-2xl border border-border/70 bg-card/60 p-3 sm:p-4">
               <WorkoutForm
                 plans={plans}
                 initialWorkout={editingWorkout}
@@ -306,14 +318,18 @@ export default function WorkoutsPage() {
                         exercises,
                       })
                     }
+                    setIsWorkoutFormOpen(false)
                   } finally {
                     setIsSubmittingWorkout(false)
                   }
                 }}
-                onCancel={editingWorkout ? () => setEditingWorkout(undefined) : undefined}
+                onCancel={() => {
+                  setEditingWorkout(undefined)
+                  setIsWorkoutFormOpen(false)
+                }}
               />
-            </CardContent>
-          </Card>
+            </section>
+          ) : null}
 
           <div className="grid gap-3">
             {isLoading ? (
@@ -353,7 +369,14 @@ export default function WorkoutsPage() {
                       <p className="text-xs text-muted-foreground">Exercicios planejados: {workout.exercises.length}</p>
 
                       <div className="flex gap-2">
-                        <Button size="sm" variant="outline" onClick={() => setEditingWorkout(workout)}>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setEditingWorkout(workout)
+                            setIsWorkoutFormOpen(true)
+                          }}
+                        >
                           <PencilSimpleLine className="mr-1 size-4" />
                           Editar
                         </Button>
@@ -370,11 +393,9 @@ export default function WorkoutsPage() {
           </div>
         </TabsContent>
 
-        <TabsContent value="history" className="space-y-4">
+        <TabsContent value="history" className="space-y-3">
           <div className="flex flex-col gap-2">
-            <p className="text-sm text-muted-foreground">
-              Toque em um registro para abrir os detalhes da execucao.
-            </p>
+            <p className="text-sm text-muted-foreground">Toque em um registro para abrir os detalhes da execucao.</p>
             <WorkoutHistoryList
               executions={executions}
               workoutNameById={workoutNameById}
@@ -389,15 +410,34 @@ export default function WorkoutsPage() {
         </TabsContent>
       </Tabs>
 
-      {activeTab === "today" && activePlan ? (
-        <Card className="border-border/70">
-          <CardContent className="pt-5">
-            <p className="text-xs text-muted-foreground">Plano ativo</p>
-            <p className="text-sm font-medium">{activePlan.name}</p>
-            <p className="text-xs text-muted-foreground">Dia atual: {getWeekdayLabel(todayWeekday)}</p>
-          </CardContent>
-        </Card>
-      ) : null}
+      <WorkoutExecutionSheet
+        open={isExecutionSheetOpen}
+        onOpenChange={setIsExecutionSheetOpen}
+        title={hasExecutionToday ? "Treinar novamente" : "Iniciar treino"}
+        subtitle={todayWorkout?.name ?? "Selecione o treino"}
+      >
+        <WorkoutExecutionForm
+          plans={plans}
+          workouts={workouts}
+          immersive
+          initialPlanId={executionInitialPlanId}
+          initialWorkoutId={executionInitialWorkoutId}
+          hasExecutionToday={hasExecutionToday}
+          isSubmitting={isSubmittingExecution}
+          onSubmit={async (payload) => {
+            setIsSubmittingExecution(true)
+            try {
+              await createExecutionEntry(payload)
+            } finally {
+              setIsSubmittingExecution(false)
+            }
+          }}
+          onExecutionCompleted={() => {
+            setActiveTab("history")
+            setIsExecutionSheetOpen(false)
+          }}
+        />
+      </WorkoutExecutionSheet>
     </div>
   )
 }
