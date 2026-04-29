@@ -24,7 +24,7 @@ export async function requestGptInsight(payload: GptReportPayload): Promise<GptR
   })
 
   if (!response.ok) {
-    throw new Error("Falha ao solicitar analise GPT")
+    throw new Error("Falha ao solicitar analise IA")
   }
 
   const data = (await response.json()) as { analysis: GptReportResponse }

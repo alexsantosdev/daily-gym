@@ -189,7 +189,7 @@ export default function ReportsPage() {
               }}
               disabled={!report || isGeneratingGpt}
             >
-              {isGeneratingGpt ? "Gerando analise..." : "Gerar analise mock"}
+              {isGeneratingGpt ? "Gerando analise IA..." : "Gerar analise com IA"}
             </Button>
 
             <Button
@@ -224,9 +224,17 @@ export default function ReportsPage() {
         </section>
 
         <section className="rounded-2xl border border-border/70 bg-card/60 p-3 sm:p-4">
-          <p className="mb-2 text-sm font-medium">Analise GPT</p>
+          <p className="mb-2 text-sm font-medium">Analise IA</p>
           {gptAnalysis ? (
             <div className="space-y-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant={gptAnalysis.source === "openai" ? "default" : "secondary"}>
+                  {gptAnalysis.source === "openai" ? "IA real" : "Fallback mock"}
+                </Badge>
+                <span className="text-xs text-muted-foreground">
+                  {new Date(gptAnalysis.generatedAt).toLocaleString("pt-BR")}
+                </span>
+              </div>
               <p className="text-sm">{gptAnalysis.summary}</p>
               <div className="flex flex-wrap gap-2">
                 {gptAnalysis.strengths.map((item) => (
@@ -237,7 +245,7 @@ export default function ReportsPage() {
               </div>
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">Gere uma analise mock para este periodo.</p>
+            <p className="text-sm text-muted-foreground">Gere uma analise com IA para este periodo.</p>
           )}
         </section>
       </div>
