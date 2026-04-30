@@ -20,11 +20,17 @@ const STATUS_LABELS = {
 export function StreakCard({
   summary,
   userName = "Atleta",
+  isActiveToday = false,
 }: {
   summary: StreakSummary
   userName?: string
+  isActiveToday?: boolean
 }) {
   const shareData = buildStreakShareData({ userName, summary })
+  const todayLabel =
+    summary.todayStatus === "pending" && isActiveToday
+      ? "Ativo hoje"
+      : STATUS_LABELS[summary.todayStatus]
 
   return (
     <Card className="border-primary/25 bg-primary/[0.04]">
@@ -35,7 +41,7 @@ export function StreakCard({
             Ofensiva
           </span>
           <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
-            <Badge variant="secondary">{STATUS_LABELS[summary.todayStatus]}</Badge>
+            <Badge variant="secondary">{todayLabel}</Badge>
             <ShareButton cardType="streak" data={shareData} size="xs" label="Compartilhar" />
           </div>
         </CardTitle>
@@ -45,7 +51,7 @@ export function StreakCard({
           <div>
             <p className="text-xs text-muted-foreground">Atual</p>
             <p className="text-2xl font-semibold">{summary.currentStreak}</p>
-            <p className="text-xs text-muted-foreground">treinos seguidos</p>
+            <p className="text-xs text-muted-foreground">dias seguidos</p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Melhor</p>

@@ -1,4 +1,10 @@
-﻿import { getLastNDates, getWeekKey, isDateInRange } from "@/lib/date"
+import {
+  getLastNDates,
+  getWeekKey,
+  isDateInRange,
+  parseIsoDateLocal,
+  toIsoDate,
+} from "@/lib/date"
 import type { Meal } from "@/types/meal"
 import type {
   DailyMealPoint,
@@ -14,7 +20,7 @@ import type {
 import type { Workout, WorkoutExecution, WorkoutPlan } from "@/types/workout"
 
 function toShortDate(dateValue: string) {
-  return new Date(dateValue).toLocaleDateString("pt-BR", {
+  return parseIsoDateLocal(dateValue).toLocaleDateString("pt-BR", {
     day: "2-digit",
     month: "2-digit",
   })
@@ -107,8 +113,8 @@ function buildPlannedByWeek(filters: ReportFilters, plans: WorkoutPlan[]): Map<s
     return grouped
   }
 
-  const start = new Date(filters.periodStart)
-  const end = new Date(filters.periodEnd)
+  const start = parseIsoDateLocal(filters.periodStart)
+  const end = parseIsoDateLocal(filters.periodEnd)
 
   for (let date = new Date(start); date <= end; date.setDate(date.getDate() + 1)) {
     const weekday = date.getDay()
@@ -118,7 +124,7 @@ function buildPlannedByWeek(filters: ReportFilters, plans: WorkoutPlan[]): Map<s
       continue
     }
 
-    const weekKey = getWeekKey(date.toISOString().slice(0, 10))
+    const weekKey = getWeekKey(toIsoDate(date))
     grouped.set(weekKey, (grouped.get(weekKey) ?? 0) + plannedForDay)
   }
 
@@ -171,7 +177,7 @@ function buildMealsByDayPoints(meals: Meal[], filters: ReportFilters): DailyMeal
     Math.max(
       1,
       Math.ceil(
-        (new Date(filters.periodEnd).getTime() - new Date(filters.periodStart).getTime()) / 86400000
+        (parseIsoDateLocal(filters.periodEnd).getTime() - parseIsoDateLocal(filters.periodStart).getTime()) / 86400000
       ) + 1
     ),
     filters.periodEnd
@@ -382,3 +388,4 @@ export function buildReportMetrics(
     summaryText: buildSummaryText(filters, generalStats, workoutStats, mealStats),
   }
 }
+

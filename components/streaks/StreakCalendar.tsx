@@ -1,10 +1,14 @@
 "use client"
 
-import { getWeekdayShortLabel, parseIsoDateLocal } from "@/lib/date"
+import { getWeekdayShortLabel, parseIsoDateLocal, todayIsoDate } from "@/lib/date"
 import { cn } from "@/lib/utils"
 import type { CalendarStreakStatus } from "@/types/streak"
 
-function getStatusClass(status: CalendarStreakStatus["status"]) {
+function getStatusClass(status: CalendarStreakStatus["status"], isActiveToday: boolean) {
+  if (isActiveToday) {
+    return "border-primary/50 bg-primary/20 text-primary"
+  }
+
   if (status === "completed") {
     return "border-primary/40 bg-primary/15 text-primary"
   }
@@ -20,23 +24,35 @@ function getStatusClass(status: CalendarStreakStatus["status"]) {
   return "border-border/70 bg-muted/40 text-muted-foreground"
 }
 
-function getStatusMarker(status: CalendarStreakStatus["status"]) {
+function getStatusMarker(status: CalendarStreakStatus["status"], isActiveToday: boolean) {
+  if (isActiveToday) {
+    return "ATV"
+  }
+
   if (status === "completed") {
-    return "✓"
+    return "OK"
   }
 
   if (status === "missed") {
-    return "x"
+    return "X"
   }
 
   if (status === "pending") {
-    return "•"
+    return "."
   }
 
   return "-"
 }
 
-export function StreakCalendar({ statuses }: { statuses: CalendarStreakStatus[] }) {
+export function StreakCalendar({
+  statuses,
+  isActiveToday = false,
+}: {
+  statuses: CalendarStreakStatus[]
+  isActiveToday?: boolean
+}) {
+  const today = todayIsoDate()
+
   return (
     <div className="space-y-2">
       <p className="text-sm font-medium">Ultimos dias da ofensiva</p>
@@ -44,15 +60,19 @@ export function StreakCalendar({ statuses }: { statuses: CalendarStreakStatus[] 
         {statuses.map((item) => {
           const date = parseIsoDateLocal(item.date)
           const day = date.getDay()
+          const isTodayActive = isActiveToday && item.date === today && item.status !== "completed"
 
           return (
             <div
               key={item.date}
-              className={cn("rounded-lg border p-2 text-center text-[11px] leading-tight", getStatusClass(item.status))}
+              className={cn(
+                "rounded-lg border p-2 text-center text-[11px] leading-tight",
+                getStatusClass(item.status, isTodayActive)
+              )}
             >
               <p className="font-medium">{getWeekdayShortLabel(day).slice(0, 3)}</p>
               <p>{String(date.getDate()).padStart(2, "0")}</p>
-              <p className="text-xs font-semibold">{getStatusMarker(item.status)}</p>
+              <p className="text-xs font-semibold">{getStatusMarker(item.status, isTodayActive)}</p>
             </div>
           )
         })}

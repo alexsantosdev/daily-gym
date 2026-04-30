@@ -22,6 +22,7 @@ import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
 import { WorkoutReceipt } from "@/components/workouts/WorkoutReceipt"
 import { useAuth } from "@/hooks/useAuth"
+import { todayIsoDate } from "@/lib/date"
 import { getWorkoutExecutionStatusLabel } from "@/lib/labels"
 import { uploadWorkoutExecutionPhoto } from "@/services/workoutExecutionService"
 import { cn } from "@/lib/utils"
@@ -179,7 +180,7 @@ export function WorkoutExecutionForm({
   const { user } = useAuth()
   const [planId, setPlanId] = useState(initialPlanId ?? plans[0]?.id ?? "")
   const [workoutId, setWorkoutId] = useState(initialWorkoutId ?? "")
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
+  const [date, setDate] = useState(todayIsoDate())
   const [status, setStatus] = useState<WorkoutExecutionStatus>("planned")
   const [checkinType, setCheckinType] = useState<NonNullable<CreateWorkoutExecutionInput["checkinType"]>>("auto")
 
@@ -413,7 +414,7 @@ export function WorkoutExecutionForm({
 
     setPlanId(selectedPlanId)
     setWorkoutId(workoutFromSelection?.id ?? "")
-    setDate(new Date().toISOString().slice(0, 10))
+    setDate(todayIsoDate())
     setStatus("planned")
     setCheckinType("auto")
     setStartedAt("")

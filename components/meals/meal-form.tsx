@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { todayIsoDate } from "@/lib/date"
 import { mealTypes, type Meal, type MealType } from "@/types/meal"
 
 const mealLabels: Record<MealType, string> = {
@@ -31,7 +32,7 @@ export interface MealFormValues {
 }
 
 const baseDefaults: MealFormValues = {
-  date: new Date().toISOString().slice(0, 10),
+  date: todayIsoDate(),
   time: new Date().toTimeString().slice(0, 5),
   mealType: "breakfast",
   description: "",

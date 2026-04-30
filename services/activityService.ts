@@ -9,9 +9,9 @@ import {
   updateDoc,
   where,
 } from "firebase/firestore"
-import { getDownloadURL, ref, uploadBytes } from "firebase/storage"
 
 import { assertFirebaseConfigured } from "@/lib/firebase"
+import { buildImageFileName, uploadImageWithFallbackPaths } from "@/lib/storageUpload"
 import type {
   Activity,
   CreateActivityInput,
@@ -122,9 +122,18 @@ export async function getActivitiesByDate(userId: string, date: string) {
 
 export async function uploadActivityPhoto(userId: string, file: File) {
   const { storage } = assertFirebaseConfigured()
-  const extension = file.name.split(".").pop() || "jpg"
-  const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${extension}`
-  const fileRef = ref(storage, `activity-photos/${userId}/${fileName}`)
-  await uploadBytes(fileRef, file)
-  return getDownloadURL(fileRef)
+  const fileName = buildImageFileName(file)
+
+  const candidatePaths = [
+    `activity-photos/${userId}/${fileName}`,
+    `workout-execution-photos/${userId}/activity-${fileName}`,
+    `meal-photos/${userId}/activity-${fileName}`,
+  ]
+
+  return uploadImageWithFallbackPaths({
+    storage,
+    file,
+    candidatePaths,
+    entityLabel: "foto da atividade",
+  })
 }

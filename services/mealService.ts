@@ -9,9 +9,9 @@ import {
   updateDoc,
   where,
 } from "firebase/firestore"
-import { getDownloadURL, ref, uploadBytes } from "firebase/storage"
 
 import { assertFirebaseConfigured } from "@/lib/firebase"
+import { buildImageFileName, uploadImageWithFallbackPaths } from "@/lib/storageUpload"
 import type { CreateMealInput, Meal, UpdateMealInput } from "@/types/meal"
 
 const COLLECTION_NAME = "meals"
@@ -114,10 +114,17 @@ export async function listMealsByDay(userId: string, date: string) {
 
 export async function uploadMealPhoto(userId: string, file: File) {
   const { storage } = assertFirebaseConfigured()
-  const extension = file.name.split(".").pop() || "jpg"
-  const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${extension}`
-  const fileRef = ref(storage, `meal-photos/${userId}/${fileName}`)
+  const fileName = buildImageFileName(file)
+  const candidatePaths = [
+    `meal-photos/${userId}/${fileName}`,
+    `activity-photos/${userId}/meal-${fileName}`,
+    `workout-execution-photos/${userId}/meal-${fileName}`,
+  ]
 
-  await uploadBytes(fileRef, file)
-  return getDownloadURL(fileRef)
+  return uploadImageWithFallbackPaths({
+    storage,
+    file,
+    candidatePaths,
+    entityLabel: "foto da refeicao",
+  })
 }

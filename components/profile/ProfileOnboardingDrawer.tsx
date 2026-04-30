@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { parseIsoDateLocal } from "@/lib/date"
 import {
   completeOnboarding,
   createUserProfile,
@@ -65,7 +66,7 @@ function calculateAge(birthDate: string): number {
     return 0
   }
 
-  const birth = new Date(birthDate)
+  const birth = parseIsoDateLocal(birthDate)
   if (Number.isNaN(birth.getTime())) {
     return 0
   }

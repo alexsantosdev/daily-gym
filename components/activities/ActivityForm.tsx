@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { todayIsoDate } from "@/lib/date"
 import type { Activity, ActivityType } from "@/types/activity"
 import { activityTypes } from "@/types/activity"
 
@@ -30,7 +31,7 @@ export interface ActivityFormValues {
 const defaults: ActivityFormValues = {
   name: "",
   type: "walk",
-  date: new Date().toISOString().slice(0, 10),
+  date: todayIsoDate(),
   durationMinutes: undefined,
   notes: "",
   photoFile: null,

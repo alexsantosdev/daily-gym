@@ -9,9 +9,8 @@
   updateDoc,
   where,
 } from "firebase/firestore"
-import { getDownloadURL, ref, uploadBytes } from "firebase/storage"
-
 import { assertFirebaseConfigured } from "@/lib/firebase"
+import { buildImageFileName, uploadImageWithFallbackPaths } from "@/lib/storageUpload"
 import type {
   CreateMonthlyCheckinInput,
   UpdateMonthlyCheckinInput,
@@ -166,10 +165,17 @@ export async function shouldRequestMonthlyCheckin(userId: string): Promise<boole
 
 export async function uploadMonthlyProgressPhoto(userId: string, file: File): Promise<string> {
   const { storage } = assertFirebaseConfigured()
-  const extension = file.name.split(".").pop() || "jpg"
-  const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${extension}`
-  const fileRef = ref(storage, `profile-progress-photos/${userId}/${fileName}`)
+  const fileName = buildImageFileName(file)
+  const candidatePaths = [
+    `profile-progress-photos/${userId}/${fileName}`,
+    `activity-photos/${userId}/progress-${fileName}`,
+    `workout-execution-photos/${userId}/progress-${fileName}`,
+  ]
 
-  await uploadBytes(fileRef, file)
-  return getDownloadURL(fileRef)
+  return uploadImageWithFallbackPaths({
+    storage,
+    file,
+    candidatePaths,
+    entityLabel: "foto de progresso",
+  })
 }

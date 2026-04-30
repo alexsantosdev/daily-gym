@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation"
 import {
   Barbell,
   CalendarBlank,
+  CalendarPlus,
   CaretDown,
   ChartBar,
   ForkKnife,
@@ -33,10 +34,12 @@ const NAV_ITEMS = [
 ]
 
 const SECONDARY_NAV_ITEMS = [
+  { href: "/planning", label: "Planejamento", icon: CalendarPlus },
   { href: "/groups", label: "Competicao", icon: Trophy },
   { href: "/personal-ai", label: "Personal IA", icon: Sparkle },
 ]
 
+const DESKTOP_NAV_ITEMS = [...NAV_ITEMS, ...SECONDARY_NAV_ITEMS]
 const MOBILE_NAV_ITEMS = NAV_ITEMS.slice(0, 5)
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -72,29 +75,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="flex items-center gap-1.5">
-            <div className="hidden items-center gap-1.5 md:flex">
-              {SECONDARY_NAV_ITEMS.map((item) => {
-                const Icon = item.icon
-                const isActive = pathname === item.href
-
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={cn(
-                      "inline-flex items-center gap-1.5 rounded-lg border border-border/60 px-2.5 py-1.5 text-xs transition-colors",
-                      isActive
-                        ? "bg-primary/10 text-primary"
-                        : "bg-background text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-                    )}
-                  >
-                    <Icon className="size-3.5" />
-                    <span>{item.label}</span>
-                  </Link>
-                )
-              })}
-            </div>
-
             <div className="relative" ref={menuRef}>
             <Button
               size="sm"
@@ -120,6 +100,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   >
                     <Sparkle className="size-4" />
                     Personal IA
+                  </Link>
+                  <Link
+                    href="/planning"
+                    className="inline-flex w-full items-center gap-2 rounded-lg px-2 py-2 text-sm text-foreground hover:bg-muted/60 md:hidden"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <CalendarPlus className="size-4" />
+                    Planejamento
                   </Link>
                   <Link
                     href="/groups"
@@ -155,7 +143,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
 
         <div className="mx-auto hidden w-full max-w-6xl gap-1.5 overflow-x-auto px-3 pb-2.5 sm:px-4 md:flex">
-          {NAV_ITEMS.map((item) => {
+          {DESKTOP_NAV_ITEMS.map((item) => {
             const isActive = pathname === item.href
             const Icon = item.icon
 

@@ -19,6 +19,7 @@ import { useAuth } from "@/hooks/useAuth"
 import { useMeals } from "@/hooks/useMeals"
 import { getMealTypeLabel } from "@/lib/labels"
 import { uploadMealPhoto } from "@/services/mealService"
+import { markPlanningEventCompleted } from "@/services/planningService"
 import { mealTypes, type Meal, type MealType } from "@/types/meal"
 
 function normalizeTags(value: string) {
@@ -31,6 +32,7 @@ function normalizeTags(value: string) {
 export default function MealsPage() {
   const searchParams = useSearchParams()
   const quickParam = searchParams.get("quick") === "1"
+  const plannedEventId = searchParams.get("plannedEventId")
 
   const { user } = useAuth()
   const { meals, isLoading, createMealEntry, updateMealEntry, deleteMealEntry } = useMeals(user?.uid)
@@ -96,6 +98,9 @@ export default function MealsPage() {
         setEditingMeal(undefined)
       } else {
         await createMealEntry(payload)
+        if (plannedEventId) {
+          await markPlanningEventCompleted(plannedEventId)
+        }
       }
 
       setIsFormOpen(false)

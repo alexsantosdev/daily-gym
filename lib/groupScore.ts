@@ -1,4 +1,5 @@
 import type { GroupActivity, GroupMember, GroupActivityType } from "@/types/group"
+import { parseIsoDateLocal } from "@/lib/date"
 
 export const GROUP_POINTS: Record<GroupActivityType, number> = {
   workout_completed: 100,
@@ -46,8 +47,8 @@ function computeCurrentStreakByActivities(activities: GroupActivity[]): number {
   let streak = 1
 
   for (let index = dates.length - 1; index > 0; index -= 1) {
-    const current = new Date(dates[index]).getTime()
-    const previous = new Date(dates[index - 1]).getTime()
+    const current = parseIsoDateLocal(dates[index]).getTime()
+    const previous = parseIsoDateLocal(dates[index - 1]).getTime()
     const daysDiff = Math.round((current - previous) / 86400000)
 
     if (daysDiff <= 1) {

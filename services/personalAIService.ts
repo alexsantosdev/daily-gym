@@ -126,7 +126,7 @@ export async function buildUserAIContext(userId: string): Promise<UserAIContext>
   const activitiesLast30d = activities.filter((activity) => inLast30Days(activity.date)).length
   const mealsLast30d = meals.filter((meal) => inLast30Days(meal.date)).length
 
-  const streakSummary = getStreakSummary(plans, workouts, executions)
+  const streakSummary = getStreakSummary(plans, workouts, executions, activities)
   const activePlan = plans.find((plan) => plan.status === "active") ?? null
 
   return {

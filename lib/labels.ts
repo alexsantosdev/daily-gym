@@ -1,5 +1,6 @@
 import type { MealType } from "@/types/meal"
 import type { GroupActivityType } from "@/types/group"
+import type { PlanningEventStatus, PlanningEventType, PlanningRecurrence } from "@/types/planning"
 import type { StreakStatus } from "@/types/streak"
 import type {
   CheckinType,
@@ -62,6 +63,25 @@ const groupActivityTypeLabels: Record<GroupActivityType, string> = {
   manual: "Manual",
 }
 
+const planningEventTypeLabels: Record<PlanningEventType, string> = {
+  meal: "Refeicao",
+  workout: "Treino",
+  activity: "Atividade",
+}
+
+const planningStatusLabels: Record<PlanningEventStatus, string> = {
+  planned: "Planejado",
+  completed: "Concluido",
+  skipped: "Ignorado",
+}
+
+const planningRecurrenceLabels: Record<PlanningRecurrence, string> = {
+  none: "Sem recorrencia",
+  daily: "Diaria",
+  weekly: "Semanal",
+  monthly: "Mensal",
+}
+
 export function getMealTypeLabel(type: MealType): string {
   return mealTypeLabels[type]
 }
@@ -88,4 +108,16 @@ export function getStreakStatusLabel(status: StreakStatus): string {
 
 export function getGroupActivityTypeLabel(type: GroupActivityType): string {
   return groupActivityTypeLabels[type]
+}
+
+export function getPlanningEventTypeLabel(type: PlanningEventType): string {
+  return planningEventTypeLabels[type]
+}
+
+export function getPlanningStatusLabel(status: PlanningEventStatus): string {
+  return planningStatusLabels[status]
+}
+
+export function getPlanningRecurrenceLabel(recurrence: PlanningRecurrence): string {
+  return planningRecurrenceLabels[recurrence]
 }

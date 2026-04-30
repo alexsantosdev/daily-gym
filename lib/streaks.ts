@@ -70,6 +70,16 @@ export function hasValidWorkoutExecutionForDate(date: string, executions: Workou
   )
 }
 
+export function hasValidStreakCompletionForDate(
+  date: string,
+  executions: WorkoutExecution[],
+  activities: Activity[]
+): boolean {
+  const hasWorkoutCompletion = hasValidWorkoutExecutionForDate(date, executions)
+  const hasActivity = activities.some((activity) => activity.date === date)
+  return hasWorkoutCompletion || hasActivity
+}
+
 export function hasAnyActivityForDate(
   date: string,
   executions: WorkoutExecution[],
@@ -84,7 +94,8 @@ export function calculateStreakStatusForDate(
   date: string,
   plan: WorkoutPlan | null,
   workouts: Workout[],
-  executions: WorkoutExecution[]
+  executions: WorkoutExecution[],
+  activities: Activity[] = []
 ): StreakStatus {
   const today = todayIsoDate()
   const planned = isWorkoutPlannedForDate(date, plan, workouts)
@@ -93,7 +104,7 @@ export function calculateStreakStatusForDate(
     return "rest_day"
   }
 
-  if (hasValidWorkoutExecutionForDate(date, executions)) {
+  if (hasValidStreakCompletionForDate(date, executions, activities)) {
     return "completed"
   }
 
@@ -108,6 +119,7 @@ export function calculateCurrentStreak(
   plan: WorkoutPlan | null,
   workouts: Workout[],
   executions: WorkoutExecution[],
+  activities: Activity[] = [],
   referenceDate = todayIsoDate()
 ): number {
   if (!plan) {
@@ -116,12 +128,11 @@ export function calculateCurrentStreak(
 
   let streak = 0
   const cursor = parseDate(referenceDate)
-  const earliestExecution = executions
-    .map((execution) => execution.date)
+  const earliestDate = [...executions.map((execution) => execution.date), ...activities.map((activity) => activity.date)]
     .sort(compareIsoDateAsc)[0]
   const fallbackStart = new Date(cursor)
   fallbackStart.setDate(cursor.getDate() - 365)
-  const lowerBound = earliestExecution ?? toIsoDate(fallbackStart)
+  const lowerBound = earliestDate ?? toIsoDate(fallbackStart)
 
   while (toIsoDate(cursor) >= lowerBound) {
     const cursorDate = toIsoDate(cursor)
@@ -132,7 +143,7 @@ export function calculateCurrentStreak(
       continue
     }
 
-    const completed = hasValidWorkoutExecutionForDate(cursorDate, executions)
+    const completed = hasValidStreakCompletionForDate(cursorDate, executions, activities)
 
     if (completed) {
       streak += 1
@@ -155,6 +166,7 @@ export function calculateWeeklyStreak(
   plan: WorkoutPlan | null,
   workouts: Workout[],
   executions: WorkoutExecution[],
+  activities: Activity[] = [],
   referenceDate = todayIsoDate()
 ): Pick<StreakSummary, "weeklyCompleted" | "weeklyPlanned" | "weeklyPercentage"> {
   if (!plan) {
@@ -176,7 +188,7 @@ export function calculateWeeklyStreak(
     }
 
     weeklyPlanned += 1
-    if (hasValidWorkoutExecutionForDate(date, executions)) {
+    if (hasValidStreakCompletionForDate(date, executions, activities)) {
       weeklyCompleted += 1
     }
   })
@@ -189,16 +201,18 @@ export function calculateLongestStreak(
   plan: WorkoutPlan | null,
   workouts: Workout[],
   executions: WorkoutExecution[],
+  activities: Activity[] = [],
   referenceDate = todayIsoDate()
 ): number {
   if (!plan) {
     return 0
   }
 
-  const executionDates = executions.map((execution) => execution.date).sort(compareIsoDateAsc)
-  const fallbackStart = new Date(referenceDate)
+  const historyDates = [...executions.map((execution) => execution.date), ...activities.map((activity) => activity.date)]
+    .sort(compareIsoDateAsc)
+  const fallbackStart = parseDate(referenceDate)
   fallbackStart.setDate(fallbackStart.getDate() - 365)
-  const startDate = executionDates[0] ?? toIsoDate(fallbackStart)
+  const startDate = historyDates[0] ?? toIsoDate(fallbackStart)
   const dates = iterateDates(startDate, referenceDate)
 
   let longest = 0
@@ -210,7 +224,7 @@ export function calculateLongestStreak(
       return
     }
 
-    if (hasValidWorkoutExecutionForDate(date, executions)) {
+    if (hasValidStreakCompletionForDate(date, executions, activities)) {
       current += 1
       if (current > longest) {
         longest = current
@@ -228,14 +242,15 @@ export function calculateStreakStatusForCalendar(
   dates: string[],
   plan: WorkoutPlan | null,
   workouts: Workout[],
-  executions: WorkoutExecution[]
+  executions: WorkoutExecution[],
+  activities: Activity[] = []
 ) {
   return dates.map((date) => {
     const planned = isWorkoutPlannedForDate(date, plan, workouts)
     return {
       date,
       planned,
-      status: calculateStreakStatusForDate(date, plan, workouts, executions),
+      status: calculateStreakStatusForDate(date, plan, workouts, executions, activities),
     }
   })
 }
@@ -266,6 +281,7 @@ export function findLastMissedDate(
   plan: WorkoutPlan | null,
   workouts: Workout[],
   executions: WorkoutExecution[],
+  activities: Activity[] = [],
   referenceDate = todayIsoDate()
 ): string | undefined {
   if (!plan) {
@@ -282,7 +298,7 @@ export function findLastMissedDate(
       continue
     }
 
-    if (!hasValidWorkoutExecutionForDate(iso, executions)) {
+    if (!hasValidStreakCompletionForDate(iso, executions, activities)) {
       return iso
     }
   }
@@ -294,25 +310,27 @@ export function calculateStreakSummary(
   plans: WorkoutPlan[],
   workouts: Workout[],
   executions: WorkoutExecution[],
+  activities: Activity[] = [],
   referenceDate = todayIsoDate()
 ): StreakSummary {
   const activePlan = getActivePlan(plans)
-  const todayStatus = calculateStreakStatusForDate(referenceDate, activePlan, workouts, executions)
+  const todayStatus = calculateStreakStatusForDate(referenceDate, activePlan, workouts, executions, activities)
   const { weeklyCompleted, weeklyPlanned, weeklyPercentage } = calculateWeeklyStreak(
     activePlan,
     workouts,
     executions,
+    activities,
     referenceDate
   )
 
   return {
-    currentStreak: calculateCurrentStreak(activePlan, workouts, executions, referenceDate),
-    longestStreak: calculateLongestStreak(activePlan, workouts, executions, referenceDate),
+    currentStreak: calculateCurrentStreak(activePlan, workouts, executions, activities, referenceDate),
+    longestStreak: calculateLongestStreak(activePlan, workouts, executions, activities, referenceDate),
     weeklyCompleted,
     weeklyPlanned,
     weeklyPercentage,
     nextPlannedWorkoutDate: findNextPlannedWorkoutDate(activePlan, workouts, referenceDate),
     todayStatus,
-    lastMissedDate: findLastMissedDate(activePlan, workouts, executions, referenceDate),
+    lastMissedDate: findLastMissedDate(activePlan, workouts, executions, activities, referenceDate),
   }
 }

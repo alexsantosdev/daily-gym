@@ -22,12 +22,14 @@ import { getTodayWeekday, getWeekdayLabel, todayIsoDate } from "@/lib/date"
 import { useAuth } from "@/hooks/useAuth"
 import { useWorkouts } from "@/hooks/useWorkouts"
 import { getWorkoutPlanStatusLabel } from "@/lib/labels"
+import { markPlanningEventCompleted } from "@/services/planningService"
 import type { Workout, WorkoutPlan } from "@/types/workout"
 
 export default function WorkoutsPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const startParamRaw = searchParams.get("start")
+  const plannedEventId = searchParams.get("plannedEventId")
   const executionIdParam = searchParams.get("executionId")
   const startMode = Boolean(startParamRaw)
   const requestedWorkoutId = startParamRaw && startParamRaw !== "1" ? startParamRaw : undefined
@@ -162,6 +164,9 @@ export default function WorkoutsPage() {
             setIsSubmittingExecution(true)
             try {
               await createExecutionEntry(payload)
+              if (plannedEventId) {
+                await markPlanningEventCompleted(plannedEventId)
+              }
             } finally {
               setIsSubmittingExecution(false)
             }
@@ -428,6 +433,9 @@ export default function WorkoutsPage() {
             setIsSubmittingExecution(true)
             try {
               await createExecutionEntry(payload)
+              if (plannedEventId) {
+                await markPlanningEventCompleted(plannedEventId)
+              }
             } finally {
               setIsSubmittingExecution(false)
             }

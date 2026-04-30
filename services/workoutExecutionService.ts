@@ -9,9 +9,10 @@ import {
   updateDoc,
   where,
 } from "firebase/firestore"
-import { getDownloadURL, ref, uploadBytes } from "firebase/storage"
 
 import { assertFirebaseConfigured } from "@/lib/firebase"
+import { toIsoDate } from "@/lib/date"
+import { buildImageFileName, uploadImageWithFallbackPaths } from "@/lib/storageUpload"
 import type {
   CreateWorkoutExecutionInput,
   UpdateWorkoutExecutionInput,
@@ -50,13 +51,49 @@ function computeDurationMinutes(startedAt?: string, finishedAt?: string) {
   return Math.max(1, Math.round((finish - start) / 60000))
 }
 
+function resolveExecutionDate(input: {
+  date?: string
+  startedAt?: string
+  checkinAt?: string
+  finishedAt?: string
+  checkoutAt?: string
+  createdAt?: string
+}) {
+  const source =
+    input.startedAt ??
+    input.checkinAt ??
+    input.finishedAt ??
+    input.checkoutAt ??
+    input.date ??
+    input.createdAt
+
+  if (!source) {
+    return toIsoDate(new Date())
+  }
+
+  try {
+    return toIsoDate(source)
+  } catch {
+    return input.date ?? toIsoDate(new Date())
+  }
+}
+
 function mapWorkoutExecution(id: string, data: Partial<WorkoutExecution>): WorkoutExecution {
+  const resolvedDate = resolveExecutionDate({
+    date: data.date,
+    startedAt: data.startedAt,
+    checkinAt: data.checkinAt,
+    finishedAt: data.finishedAt,
+    checkoutAt: data.checkoutAt,
+    createdAt: data.createdAt,
+  })
+
   return {
     id,
     userId: data.userId ?? "",
     planId: data.planId ?? "",
     workoutId: data.workoutId ?? "",
-    date: data.date ?? "",
+    date: resolvedDate,
     startedAt: data.startedAt,
     finishedAt: data.finishedAt,
     durationMinutes: data.durationMinutes,
@@ -77,12 +114,20 @@ export async function createWorkoutExecution(input: CreateWorkoutExecutionInput)
   const now = new Date().toISOString()
 
   const durationMinutes = computeDurationMinutes(input.startedAt, input.finishedAt)
+  const resolvedDate = resolveExecutionDate({
+    date: input.date,
+    startedAt: input.startedAt,
+    checkinAt: input.checkinAt,
+    finishedAt: input.finishedAt,
+    checkoutAt: input.checkoutAt,
+    createdAt: now,
+  })
 
   const payload = stripUndefinedDeep<Omit<WorkoutExecution, "id">>({
     userId: input.userId,
     planId: input.planId,
     workoutId: input.workoutId,
-    date: input.date,
+    date: resolvedDate,
     startedAt: input.startedAt,
     finishedAt: input.finishedAt,
     durationMinutes,
@@ -108,9 +153,16 @@ export async function updateWorkoutExecution(
 ) {
   const { db } = assertFirebaseConfigured()
   const durationMinutes = computeDurationMinutes(input.startedAt, input.finishedAt)
+  const resolvedDate = resolveExecutionDate({
+    startedAt: input.startedAt,
+    checkinAt: input.checkinAt,
+    finishedAt: input.finishedAt,
+    checkoutAt: input.checkoutAt,
+  })
   const payload = stripUndefinedDeep({
     ...input,
     userId,
+    date: resolvedDate,
     durationMinutes,
     updatedAt: new Date().toISOString(),
   })
@@ -140,10 +192,17 @@ export async function listWorkoutExecutionsByUser(userId: string) {
 
 export async function uploadWorkoutExecutionPhoto(userId: string, file: File) {
   const { storage } = assertFirebaseConfigured()
-  const extension = file.name.split(".").pop() || "jpg"
-  const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${extension}`
-  const fileRef = ref(storage, `workout-execution-photos/${userId}/${fileName}`)
+  const fileName = buildImageFileName(file)
+  const candidatePaths = [
+    `workout-execution-photos/${userId}/${fileName}`,
+    `activity-photos/${userId}/workout-${fileName}`,
+    `meal-photos/${userId}/workout-${fileName}`,
+  ]
 
-  await uploadBytes(fileRef, file)
-  return getDownloadURL(fileRef)
+  return uploadImageWithFallbackPaths({
+    storage,
+    file,
+    candidatePaths,
+    entityLabel: "foto do treino",
+  })
 }

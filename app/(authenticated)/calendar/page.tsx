@@ -15,6 +15,7 @@ import { useAuth } from "@/hooks/useAuth"
 import { useActivities } from "@/hooks/useActivities"
 import { useMeals } from "@/hooks/useMeals"
 import { useWorkouts } from "@/hooks/useWorkouts"
+import { parseIsoDateLocal, todayIsoDate, toIsoDate } from "@/lib/date"
 import { getWorkoutExecutionStatusLabel, getStreakStatusLabel } from "@/lib/labels"
 import { getGroupActivities } from "@/services/groupActivityService"
 import { getUserGroups } from "@/services/groupService"
@@ -37,10 +38,6 @@ interface DayMarker {
   thumb?: string
   streakStatus?: CalendarStreakStatus["status"]
   competition: boolean
-}
-
-function toIsoDate(date: Date) {
-  return date.toISOString().slice(0, 10)
 }
 
 function buildMonthGrid(monthValue: string): CalendarDay[] {
@@ -68,7 +65,7 @@ function buildMonthGrid(monthValue: string): CalendarDay[] {
 }
 
 function countPlannedByDate(date: string, plans: WorkoutPlan[]) {
-  const weekday = new Date(date).getDay()
+  const weekday = parseIsoDateLocal(date).getDay()
 
   return plans.filter((plan) => plan.status === "active" && plan.weekdays.includes(weekday)).length
 }
@@ -87,8 +84,8 @@ export default function CalendarPage() {
     photoURL: user?.photoURL,
   })
 
-  const [month, setMonth] = useState(new Date().toISOString().slice(0, 7))
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10))
+  const [month, setMonth] = useState(todayIsoDate().slice(0, 7))
+  const [selectedDate, setSelectedDate] = useState(todayIsoDate())
   const [groupActivityDates, setGroupActivityDates] = useState<Set<string>>(new Set())
   const [showDaySheet, setShowDaySheet] = useState(false)
 
@@ -137,7 +134,7 @@ export default function CalendarPage() {
   const markersByDate = useMemo(() => {
     const markerMap = new Map<string, DayMarker>()
     const streakStatusByDate = new Map(
-      getCalendarStreakStatuses(monthDates, plans, workouts, executions).map((item) => [item.date, item.status])
+      getCalendarStreakStatuses(monthDates, plans, workouts, executions, activities).map((item) => [item.date, item.status])
     )
 
     monthGrid.forEach((day) => {
@@ -194,74 +191,167 @@ export default function CalendarPage() {
 
       <div className="grid gap-4 lg:grid-cols-[1.8fr_1fr]">
         <section className="rounded-2xl border border-border/70 bg-card/60 p-3 sm:p-4">
-          <div className="grid grid-cols-7 gap-1 text-center text-[10px] text-muted-foreground sm:gap-2 sm:text-xs">
-            <span>Dom</span>
-            <span>Seg</span>
-            <span>Ter</span>
-            <span>Qua</span>
-            <span>Qui</span>
-            <span>Sex</span>
-            <span>Sab</span>
+          <div className="sm:hidden">
+            <div className="grid grid-cols-7 gap-1 text-center text-[10px] text-muted-foreground">
+              <span>D</span>
+              <span>S</span>
+              <span>T</span>
+              <span>Q</span>
+              <span>Q</span>
+              <span>S</span>
+              <span>S</span>
+            </div>
+
+            <div className="mt-2 grid grid-cols-7 gap-1">
+              {monthGrid.map((day) => {
+                const marker = markersByDate.get(day.date) ?? {
+                  meals: 0,
+                  planned: 0,
+                  executed: 0,
+                  activities: 0,
+                  competition: false,
+                }
+                const dayNumber = Number(day.date.slice(-2))
+                const hasEvents = marker.meals + marker.planned + marker.executed + marker.activities > 0
+                const hasPhoto = Boolean(marker.thumb)
+
+                return (
+                  <button
+                    key={day.date}
+                    type="button"
+                    onClick={() => {
+                        setSelectedDate(day.date)
+                        setShowDaySheet(true)
+                      }}
+                    className={`h-[4.8rem] rounded-lg border px-1 py-1 text-left transition ${
+                      selectedDate === day.date
+                        ? "border-primary/40 bg-primary/10"
+                        : "border-border/70"
+                    } ${day.inCurrentMonth ? "opacity-100" : "opacity-40"}`}
+                  >
+                    <div className="flex h-full flex-col items-center justify-between">
+                      <p className="text-[11px] font-semibold leading-none">{dayNumber}</p>
+
+                      <div className="flex min-h-[1.25rem] items-center justify-center">
+                        {hasPhoto ? (
+                          <span
+                            className="size-5 overflow-hidden rounded-full border border-border/70 ring-1 ring-background"
+                            title="Dia com foto"
+                          >
+                            <Image
+                              src={marker.thumb!}
+                              alt={`Foto ${day.date}`}
+                              width={40}
+                              height={40}
+                              unoptimized
+                              className="h-full w-full object-cover"
+                            />
+                          </span>
+                        ) : (
+                          <span className="size-5 rounded-full border border-dashed border-border/50 bg-muted/20" />
+                        )}
+                      </div>
+
+                      <div className="flex min-h-2 items-center justify-center gap-1">
+                        {hasEvents ? (
+                          <>
+                            {marker.meals > 0 ? <span className="size-1.5 rounded-full bg-chart-2" title="Refeicao" /> : null}
+                            {marker.planned > 0 ? <span className="size-1.5 rounded-full bg-chart-4" title="Planejado" /> : null}
+                            {marker.executed > 0 ? <span className="size-1.5 rounded-full bg-chart-1" title="Executado" /> : null}
+                            {marker.activities > 0 ? <span className="size-1.5 rounded-full bg-primary" title="Atividade" /> : null}
+                          </>
+                        ) : null}
+                      </div>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
           </div>
 
-          <div className="mt-2 grid grid-cols-7 gap-1 sm:gap-2">
-            {monthGrid.map((day) => {
-              const marker = markersByDate.get(day.date) ?? {
-                meals: 0,
-                planned: 0,
-                executed: 0,
-                activities: 0,
-                competition: false,
-              }
-              const dayNumber = Number(day.date.slice(-2))
-              const hasEvents = marker.meals + marker.planned + marker.executed + marker.activities > 0
+          <div className="hidden sm:block">
+            <div className="grid grid-cols-7 gap-2 text-center text-xs text-muted-foreground">
+              <span>Dom</span>
+              <span>Seg</span>
+              <span>Ter</span>
+              <span>Qua</span>
+              <span>Qui</span>
+              <span>Sex</span>
+              <span>Sab</span>
+            </div>
 
-              return (
-                <button
-                  key={day.date}
-                  type="button"
-                  onClick={() => {
-                    setSelectedDate(day.date)
-                    setShowDaySheet(true)
-                  }}
-                  className={`min-h-16 rounded-xl border p-1 text-left transition min-[390px]:min-h-[4.5rem] sm:min-h-24 sm:p-1.5 ${
-                    selectedDate === day.date
-                      ? "border-primary/40 bg-primary/10"
-                      : "border-border/70 hover:border-primary/30"
-                  } ${day.inCurrentMonth ? "opacity-100" : "opacity-35"}`}
-                >
-                  <p className="text-[11px] font-semibold sm:text-xs">{dayNumber}</p>
-                  {marker.thumb ? (
-                    <Image
-                      src={marker.thumb}
-                      alt={`Foto ${day.date}`}
-                      width={200}
-                      height={120}
-                      unoptimized
-                      className="mt-1 h-8 w-full rounded-lg object-cover sm:h-10"
-                    />
-                  ) : null}
-                  {hasEvents ? (
-                    <div className="mt-1 flex flex-wrap gap-1">
-                      {marker.meals > 0 ? <span className="size-2 rounded-full bg-chart-2" title="Refeicao" /> : null}
-                      {marker.planned > 0 ? <span className="size-2 rounded-full bg-chart-4" title="Planejado" /> : null}
-                      {marker.executed > 0 ? <span className="size-2 rounded-full bg-chart-1" title="Executado" /> : null}
-                      {marker.activities > 0 ? <span className="size-2 rounded-full bg-primary" title="Atividade" /> : null}
+            <div className="mt-2 grid grid-cols-7 gap-2">
+              {monthGrid.map((day) => {
+                const marker = markersByDate.get(day.date) ?? {
+                  meals: 0,
+                  planned: 0,
+                  executed: 0,
+                  activities: 0,
+                  competition: false,
+                }
+                const dayNumber = Number(day.date.slice(-2))
+                const hasEvents = marker.meals + marker.planned + marker.executed + marker.activities > 0
+
+                return (
+                  <button
+                    key={day.date}
+                    type="button"
+                    onClick={() => {
+                      setSelectedDate(day.date)
+                      setShowDaySheet(true)
+                    }}
+                    className={`aspect-square min-h-24 rounded-xl border p-1.5 text-left transition ${
+                      selectedDate === day.date
+                        ? "border-primary/40 bg-primary/10"
+                        : "border-border/70 hover:border-primary/30"
+                    } ${day.inCurrentMonth ? "opacity-100" : "opacity-35"}`}
+                  >
+                    <div className="flex h-full flex-col">
+                      <p className="text-xs font-semibold leading-none">{dayNumber}</p>
+
+                      <div className="mt-1 h-10 w-full shrink-0 rounded-md">
+                        {marker.thumb ? (
+                          <Image
+                            src={marker.thumb}
+                            alt={`Foto ${day.date}`}
+                            width={200}
+                            height={120}
+                            unoptimized
+                            className="h-full w-full rounded-md object-cover"
+                          />
+                        ) : (
+                          <div className="h-full w-full rounded-md border border-dashed border-border/50 bg-muted/20" />
+                        )}
+                      </div>
+
+                      <div className="mt-1 flex min-h-2 items-center gap-1">
+                        {hasEvents ? (
+                          <>
+                            {marker.meals > 0 ? <span className="size-2 rounded-full bg-chart-2" title="Refeicao" /> : null}
+                            {marker.planned > 0 ? <span className="size-2 rounded-full bg-chart-4" title="Planejado" /> : null}
+                            {marker.executed > 0 ? <span className="size-2 rounded-full bg-chart-1" title="Executado" /> : null}
+                            {marker.activities > 0 ? <span className="size-2 rounded-full bg-primary" title="Atividade" /> : null}
+                          </>
+                        ) : null}
+                      </div>
+
+                      <div className="mt-1">
+                        {marker.streakStatus ? (
+                          <p className="truncate text-[9px] text-muted-foreground">
+                            {getStreakStatusLabel(marker.streakStatus)}
+                          </p>
+                        ) : null}
+                        {marker.competition ? (
+                          <Badge variant="secondary" className="mt-1 px-1 py-0 text-[9px]">
+                            competicao
+                          </Badge>
+                        ) : null}
+                      </div>
                     </div>
-                  ) : null}
-                  {marker.streakStatus ? (
-                    <p className="mt-1 truncate text-[9px] text-muted-foreground">
-                      {getStreakStatusLabel(marker.streakStatus)}
-                    </p>
-                  ) : null}
-                  {marker.competition ? (
-                    <Badge variant="secondary" className="mt-1 px-1 py-0 text-[9px]">
-                      competicao
-                    </Badge>
-                  ) : null}
-                </button>
-              )
-            })}
+                  </button>
+                )
+              })}
+            </div>
           </div>
         </section>
 

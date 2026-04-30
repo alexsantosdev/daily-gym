@@ -1,14 +1,15 @@
-﻿import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { parseIsoDateLocal, todayIsoDate } from "@/lib/date"
 import { getMealTypeLabel } from "@/lib/labels"
 import type { Meal } from "@/types/meal"
 
 export function MealStats({ meals }: { meals: Meal[] }) {
-  const today = new Date().toISOString().slice(0, 10)
-  const weekStart = new Date()
+  const today = todayIsoDate()
+  const weekStart = parseIsoDateLocal(today)
   weekStart.setDate(weekStart.getDate() - 6)
 
   const mealsToday = meals.filter((meal) => meal.date === today)
-  const mealsWeek = meals.filter((meal) => new Date(meal.date) >= weekStart)
+  const mealsWeek = meals.filter((meal) => parseIsoDateLocal(meal.date).getTime() >= weekStart.getTime())
 
   const lastMeal = meals[0]
 
@@ -61,3 +62,4 @@ export function MealStats({ meals }: { meals: Meal[] }) {
     </div>
   )
 }
+

@@ -1,6 +1,7 @@
 ﻿"use client"
 
 import { useEffect, useMemo, useState } from "react"
+import Link from "next/link"
 
 import {
   CartesianGrid,
@@ -18,22 +19,24 @@ import { QuickActions } from "@/components/dashboard/QuickActions"
 import { TodaySummary } from "@/components/dashboard/TodaySummary"
 import { GroupChallengeBanner } from "@/components/groups/GroupChallengeBanner"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { StreakCalendar } from "@/components/streaks/StreakCalendar"
 import { StreakCard } from "@/components/streaks/StreakCard"
 import { Skeleton } from "@/components/ui/skeleton"
 import { calculateGroupScore } from "@/lib/groupScore"
-import { getDateRangeFromPreset, getLastNDates, getTodayWeekday } from "@/lib/date"
-import { hasAnyActivityForDate } from "@/lib/streaks"
+import { getDateRangeFromPreset, getLastNDates, getTodayWeekday, toIsoDate, todayIsoDate } from "@/lib/date"
 import { useActivities } from "@/hooks/useActivities"
 import { useAuth } from "@/hooks/useAuth"
 import { useMeals } from "@/hooks/useMeals"
 import { useWorkouts } from "@/hooks/useWorkouts"
 import { getGroupActivities } from "@/services/groupActivityService"
 import { getGroupMembers, getUserGroups } from "@/services/groupService"
+import { getPlanningEventsByUser } from "@/services/planningService"
 import { generateReportBundle } from "@/services/reportService"
 import { getCalendarStreakStatuses, getStreakSummary } from "@/services/streakService"
 import { cn } from "@/lib/utils"
 import type { GroupChallengeBannerData } from "@/types/group"
+import type { PlanningEvent } from "@/types/planning"
 import type { GeneratedReport, ReportFilters } from "@/types/report"
 
 export default function DashboardPage() {
@@ -52,10 +55,12 @@ export default function DashboardPage() {
 
   const [report, setReport] = useState<GeneratedReport | null>(null)
   const [isLoadingReport, setIsLoadingReport] = useState(true)
+  const [upcomingPlanning, setUpcomingPlanning] = useState<PlanningEvent[]>([])
+  const [isLoadingPlanning, setIsLoadingPlanning] = useState(true)
   const [challengeBanner, setChallengeBanner] = useState<GroupChallengeBannerData | null>(null)
   const [isLoadingChallenge, setIsLoadingChallenge] = useState(true)
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = todayIsoDate()
 
   useEffect(() => {
     if (!user?.uid) {
@@ -79,6 +84,64 @@ export default function DashboardPage() {
       .then(setReport)
       .finally(() => setIsLoadingReport(false))
   }, [user?.uid, meals, executions, workouts, plans])
+
+  useEffect(() => {
+    let isMounted = true
+
+    async function loadUpcomingPlanning() {
+      if (!user?.uid) {
+        if (isMounted) {
+          setUpcomingPlanning([])
+          setIsLoadingPlanning(false)
+        }
+        return
+      }
+
+      setIsLoadingPlanning(true)
+
+      try {
+        const endDate = new Date()
+        endDate.setDate(endDate.getDate() + 30)
+
+        const events = await getPlanningEventsByUser(user.uid, {
+          start: todayIsoDate(),
+          end: toIsoDate(endDate),
+        })
+
+        if (!isMounted) {
+          return
+        }
+
+        setUpcomingPlanning(
+          events
+            .filter((event) => event.status === "planned")
+            .sort((a, b) => {
+              const dateCompare = a.date.localeCompare(b.date)
+              if (dateCompare !== 0) {
+                return dateCompare
+              }
+              return a.startTime.localeCompare(b.startTime)
+            })
+            .slice(0, 3)
+        )
+      } catch (error) {
+        console.warn("Nao foi possivel carregar os proximos planejamentos.", error)
+        if (isMounted) {
+          setUpcomingPlanning([])
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoadingPlanning(false)
+        }
+      }
+    }
+
+    void loadUpcomingPlanning()
+
+    return () => {
+      isMounted = false
+    }
+  }, [user?.uid])
 
   useEffect(() => {
     let isMounted = true
@@ -295,17 +358,23 @@ export default function DashboardPage() {
 
   const loading = mealsLoading || workoutsLoading || activitiesLoading || isLoadingReport
   const streakSummary = useMemo(
-    () => getStreakSummary(plans, workouts, executions, today),
-    [executions, plans, today, workouts]
+    () => getStreakSummary(plans, workouts, executions, activities, today),
+    [activities, executions, plans, today, workouts]
   )
   const streakCalendar = useMemo(
-    () => getCalendarStreakStatuses(getLastNDates(14), plans, workouts, executions),
-    [executions, plans, workouts]
+    () => getCalendarStreakStatuses(getLastNDates(14), plans, workouts, executions, activities),
+    [activities, executions, plans, workouts]
   )
   const userName = user?.displayName?.trim() || user?.email?.split("@")[0] || "atleta"
-  const streakBadgeActive =
-    streakSummary.todayStatus === "completed" || streakSummary.weeklyCompleted > 0
-  const hasActiveDayToday = hasAnyActivityForDate(today, executions, activities)
+  const hasWorkoutToday = executions.some(
+    (execution) =>
+      execution.date === today &&
+      (execution.status === "executed" || execution.status === "partial" || execution.status === "in_progress")
+  )
+  const hasRegisteredActivityToday = activities.some((activity) => activity.date === today)
+  const hasActiveDayToday = hasWorkoutToday || hasRegisteredActivityToday
+  const streakBadgeActive = hasActiveDayToday
+
   return (
     <div className="space-y-6">
       <section className="space-y-3">
@@ -337,8 +406,12 @@ export default function DashboardPage() {
       ) : null}
 
       <section className="space-y-3">
-        <StreakCard summary={streakSummary} userName={userName} />
-        <StreakCalendar statuses={streakCalendar} />
+        <StreakCard
+          summary={streakSummary}
+          userName={userName}
+          isActiveToday={hasActiveDayToday}
+        />
+        <StreakCalendar statuses={streakCalendar} isActiveToday={hasActiveDayToday} />
       </section>
 
       {loading ? (
@@ -383,6 +456,36 @@ export default function DashboardPage() {
         lastExecution={lastExecuted}
         todayExecution={todayExecution}
       />
+
+      <section className="space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-sm font-medium text-muted-foreground">Proximos planejamentos</h2>
+          <Button asChild variant="outline" size="sm">
+            <Link href="/planning">Abrir planejamento</Link>
+          </Button>
+        </div>
+        <div className="space-y-2">
+          {isLoadingPlanning ? (
+            <>
+              <Skeleton className="h-14" />
+              <Skeleton className="h-14" />
+            </>
+          ) : upcomingPlanning.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-border/70 p-3 text-sm text-muted-foreground">
+              Sem eventos planejados. Abra Planejamento para organizar sua semana.
+            </p>
+          ) : (
+            upcomingPlanning.map((event) => (
+              <div key={event.id} className="rounded-xl border border-border/70 bg-card/60 px-3 py-2.5">
+                <p className="text-sm font-medium">{event.title}</p>
+                <p className="text-xs text-muted-foreground">
+                  {event.date} • {event.startTime} • {event.type === "meal" ? "Refeicao" : event.type === "workout" ? "Treino" : "Atividade"}
+                </p>
+              </div>
+            ))
+          )}
+        </div>
+      </section>
 
       <section className="space-y-3">
         <h2 className="text-sm font-medium text-muted-foreground">Atalhos rapidos</h2>

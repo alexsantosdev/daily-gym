@@ -15,6 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useActivities } from "@/hooks/useActivities"
 import { useAuth } from "@/hooks/useAuth"
 import { uploadActivityPhoto } from "@/services/activityService"
+import { markPlanningEventCompleted } from "@/services/planningService"
 import type { Activity } from "@/types/activity"
 
 const activityTypeLabel: Record<string, string> = {
@@ -27,6 +28,7 @@ const activityTypeLabel: Record<string, string> = {
 export default function ActivitiesPage() {
   const searchParams = useSearchParams()
   const quick = searchParams.get("quick") === "1"
+  const plannedEventId = searchParams.get("plannedEventId")
   const { user } = useAuth()
   const {
     activities,
@@ -82,6 +84,9 @@ export default function ActivitiesPage() {
         setEditingActivity(undefined)
       } else {
         await createActivityEntry(payload)
+        if (plannedEventId) {
+          await markPlanningEventCompleted(plannedEventId)
+        }
       }
       setIsFormOpen(false)
     } catch (nextError) {
