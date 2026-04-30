@@ -158,11 +158,12 @@ export default function ActivitiesPage() {
                   <div>
                     <p className="text-sm font-medium">{activity.name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {activity.date} • {activity.durationMinutes ?? 0} min
+                      {activity.date} - {activity.durationMinutes ?? 0} min
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge variant="secondary">{activityTypeLabel[activity.type] ?? "Atividade"}</Badge>
+                    {activity.source === "strava" ? <Badge variant="outline">Strava</Badge> : null}
                     <Button
                       type="button"
                       variant="outline"

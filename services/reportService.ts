@@ -1,4 +1,5 @@
-﻿import { buildReportMetrics } from "@/lib/reportMetrics"
+import { buildReportMetrics } from "@/lib/reportMetrics"
+import type { Activity } from "@/types/activity"
 import type { Meal } from "@/types/meal"
 import type { GptReportPayload, GptReportResponse } from "@/types/gpt"
 import type { GeneratedReport, ReportFilters } from "@/types/report"
@@ -7,11 +8,12 @@ import type { Workout, WorkoutExecution, WorkoutPlan } from "@/types/workout"
 export async function generateReportBundle(
   filters: ReportFilters,
   meals: Meal[],
+  activities: Activity[],
   workoutExecutions: WorkoutExecution[],
   workouts: Workout[],
   plans: WorkoutPlan[]
 ): Promise<GeneratedReport> {
-  return buildReportMetrics(filters, meals, workoutExecutions, workouts, plans)
+  return buildReportMetrics(filters, meals, activities, workoutExecutions, workouts, plans)
 }
 
 export async function requestGptInsight(payload: GptReportPayload): Promise<GptReportResponse> {

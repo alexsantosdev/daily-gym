@@ -12,11 +12,14 @@ import {
   ChartBar,
   ForkKnife,
   House,
+  Moon,
   SignOut,
   Sparkle,
+  Sun,
   Trophy,
   User,
 } from "@phosphor-icons/react"
+import { useTheme } from "next-themes"
 
 import { FloatingActionMenu } from "@/components/layout/FloatingActionMenu"
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav"
@@ -45,6 +48,7 @@ const MOBILE_NAV_ITEMS = NAV_ITEMS.slice(0, 5)
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const { user, signOutUser } = useAuth()
+  const { resolvedTheme, setTheme } = useTheme()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement | null>(null)
 
@@ -76,16 +80,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
           <div className="flex items-center gap-1.5">
             <div className="relative" ref={menuRef}>
-            <Button
-              size="sm"
-              variant="outline"
-              className="max-w-[11.5rem] gap-1.5 rounded-lg border-border/60"
-              onClick={() => setIsMenuOpen((prev) => !prev)}
-            >
-              <User className="size-4" />
-              <span className="truncate text-xs">{displayName}</span>
-              <CaretDown className={cn("size-4 transition-transform", isMenuOpen && "rotate-180")} />
-            </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="max-w-[11.5rem] gap-1.5 rounded-lg border-border/60"
+                onClick={() => setIsMenuOpen((prev) => !prev)}
+              >
+                <User className="size-4" />
+                <span className="truncate text-xs">{displayName}</span>
+                <CaretDown className={cn("size-4 transition-transform", isMenuOpen && "rotate-180")} />
+              </Button>
 
               {isMenuOpen ? (
                 <div className="absolute right-0 top-11 z-50 w-52 rounded-xl border border-border/70 bg-card p-1.5 shadow-sm">
@@ -125,6 +129,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     <User className="size-4" />
                     Perfil
                   </Link>
+                  <button
+                    type="button"
+                    className="inline-flex w-full items-center gap-2 rounded-lg px-2 py-2 text-sm text-foreground hover:bg-muted/60"
+                    onClick={() => {
+                      setIsMenuOpen(false)
+                      setTheme(resolvedTheme === "dark" ? "light" : "dark")
+                    }}
+                  >
+                    {resolvedTheme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
+                    Alternar tema
+                  </button>
                   <button
                     type="button"
                     className="inline-flex w-full items-center gap-2 rounded-lg px-2 py-2 text-sm text-foreground hover:bg-muted/60"

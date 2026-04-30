@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation"
 
 import { PencilSimpleLine, Plus, Trash } from "@phosphor-icons/react"
 
+import { ActivityHistoryList } from "@/components/activities/ActivityHistoryList"
+import { ActivityForm, type ActivityFormValues } from "@/components/activities/ActivityForm"
 import { PageHeader } from "@/components/layout/page-header"
 import { WorkoutExecutionForm } from "@/components/workouts/WorkoutExecutionForm"
 import { WorkoutExecutionSheet } from "@/components/workouts/WorkoutExecutionSheet"
@@ -19,10 +21,13 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { getTodayWeekday, getWeekdayLabel, todayIsoDate } from "@/lib/date"
+import { useActivities } from "@/hooks/useActivities"
 import { useAuth } from "@/hooks/useAuth"
 import { useWorkouts } from "@/hooks/useWorkouts"
 import { getWorkoutPlanStatusLabel } from "@/lib/labels"
+import { uploadActivityPhoto } from "@/services/activityService"
 import { markPlanningEventCompleted } from "@/services/planningService"
+import type { Activity } from "@/types/activity"
 import type { Workout, WorkoutPlan } from "@/types/workout"
 
 export default function WorkoutsPage() {
@@ -55,6 +60,11 @@ export default function WorkoutsPage() {
     email: user?.email,
     photoURL: user?.photoURL,
   })
+  const { activities, updateActivityEntry, deleteActivityEntry } = useActivities(user?.uid, {
+    displayName: user?.displayName,
+    email: user?.email,
+    photoURL: user?.photoURL,
+  })
 
   const [activeTab, setActiveTab] = useState<string>(
     executionIdParam
@@ -71,6 +81,8 @@ export default function WorkoutsPage() {
   const [isSubmittingWorkout, setIsSubmittingWorkout] = useState(false)
   const [isSubmittingPlan, setIsSubmittingPlan] = useState(false)
   const [isSubmittingExecution, setIsSubmittingExecution] = useState(false)
+  const [isSubmittingActivityHistory, setIsSubmittingActivityHistory] = useState(false)
+  const [editingActivityHistory, setEditingActivityHistory] = useState<Activity | undefined>()
   const [isExecutionSheetOpen, setIsExecutionSheetOpen] = useState(startMode)
 
   const workoutPlanLookup = useMemo(() => Object.fromEntries(plans.map((plan) => [plan.id, plan.name])), [plans])
@@ -138,6 +150,30 @@ export default function WorkoutsPage() {
 
     return todayWorkout?.id
   }, [requestedWorkoutId, todayWorkout?.id, workouts])
+
+  async function submitActivityFromHistory(values: ActivityFormValues) {
+    if (!editingActivityHistory || !user?.uid) {
+      return
+    }
+
+    setIsSubmittingActivityHistory(true)
+    try {
+      const photoUrl = values.photoFile ? await uploadActivityPhoto(user.uid, values.photoFile) : editingActivityHistory.photoUrl
+
+      await updateActivityEntry(editingActivityHistory.id, {
+        name: values.name,
+        type: values.type,
+        date: values.date,
+        durationMinutes: values.durationMinutes,
+        notes: values.notes || undefined,
+        photoUrl,
+      })
+
+      setEditingActivityHistory(undefined)
+    } finally {
+      setIsSubmittingActivityHistory(false)
+    }
+  }
 
   if (startMode) {
     return (
@@ -410,6 +446,29 @@ export default function WorkoutsPage() {
               userName={userName}
               onDelete={(executionId) => void removeExecutionEntry(executionId)}
               initialOpenedExecutionId={executionIdParam ?? undefined}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">Atividades registradas (manual e Strava).</p>
+
+            {editingActivityHistory ? (
+              <Card className="border-border/70">
+                <CardContent className="pt-5">
+                  <ActivityForm
+                    initialActivity={editingActivityHistory}
+                    isSubmitting={isSubmittingActivityHistory}
+                    onSubmit={submitActivityFromHistory}
+                    onCancel={() => setEditingActivityHistory(undefined)}
+                  />
+                </CardContent>
+              </Card>
+            ) : null}
+
+            <ActivityHistoryList
+              activities={activities}
+              onEdit={setEditingActivityHistory}
+              onDelete={(activityId) => void deleteActivityEntry(activityId)}
             />
           </div>
         </TabsContent>

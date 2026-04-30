@@ -1,4 +1,6 @@
-﻿export const profileGenders = ["male", "female", "other", "prefer_not_to_say"] as const
+import type { StravaIntegrationStatus } from "@/types/strava"
+
+export const profileGenders = ["male", "female", "other", "prefer_not_to_say"] as const
 export const profileGoals = [
   "hypertrophy",
   "fat_loss",
@@ -45,6 +47,7 @@ export interface UserProfile {
   mealsPerDayGoal?: number
   targetWeightKg?: number
   notes?: string
+  stravaIntegration?: StravaIntegrationStatus
   createdAt: string
   updatedAt: string
 }
@@ -74,6 +77,7 @@ export interface CreateUserProfileInput {
   mealsPerDayGoal?: number
   targetWeightKg?: number
   notes?: string
+  stravaIntegration?: StravaIntegrationStatus
 }
 
 export interface UpdateUserProfileInput {
@@ -100,6 +104,7 @@ export interface UpdateUserProfileInput {
   mealsPerDayGoal?: number
   targetWeightKg?: number
   notes?: string
+  stravaIntegration?: StravaIntegrationStatus
 }
 
 export interface UserMonthlyCheckin {

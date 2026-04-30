@@ -4,6 +4,7 @@ import {
   deleteDoc,
   doc,
   getDocs,
+  limit,
   orderBy,
   query,
   updateDoc,
@@ -46,6 +47,9 @@ function mapActivity(id: string, data: Partial<Activity>): Activity {
       typeof data.durationMinutes === "number" ? Number(data.durationMinutes) : undefined,
     notes: data.notes,
     photoUrl: data.photoUrl,
+    source: data.source ?? "manual",
+    externalSourceId: data.externalSourceId,
+    sourceMetadata: data.sourceMetadata,
     createdAt: data.createdAt ?? new Date().toISOString(),
     updatedAt: data.updatedAt ?? new Date().toISOString(),
   }
@@ -62,6 +66,9 @@ export async function createActivity(input: CreateActivityInput) {
     durationMinutes: input.durationMinutes,
     notes: input.notes,
     photoUrl: input.photoUrl,
+    source: input.source ?? "manual",
+    externalSourceId: input.externalSourceId,
+    sourceMetadata: input.sourceMetadata,
     createdAt: now,
     updatedAt: now,
   })
@@ -118,6 +125,51 @@ export async function getActivitiesByDate(userId: string, date: string) {
   return snapshot.docs.map((activityDoc) =>
     mapActivity(activityDoc.id, activityDoc.data() as Partial<Activity>)
   )
+}
+
+export async function getActivityBySourceExternalId(
+  userId: string,
+  source: NonNullable<Activity["source"]>,
+  externalSourceId: string
+) {
+  const { db } = assertFirebaseConfigured()
+  const activityQuery = query(
+    collection(db, COLLECTION_NAME),
+    where("userId", "==", userId),
+    where("source", "==", source),
+    where("externalSourceId", "==", externalSourceId),
+    limit(1)
+  )
+  const snapshot = await getDocs(activityQuery)
+  const first = snapshot.docs[0]
+  if (!first) {
+    return null
+  }
+
+  return mapActivity(first.id, first.data() as Partial<Activity>)
+}
+
+export async function deleteActivityBySourceExternalId(
+  userId: string,
+  source: NonNullable<Activity["source"]>,
+  externalSourceId: string
+) {
+  const { db } = assertFirebaseConfigured()
+  const activityQuery = query(
+    collection(db, COLLECTION_NAME),
+    where("userId", "==", userId),
+    where("source", "==", source),
+    where("externalSourceId", "==", externalSourceId),
+    limit(1)
+  )
+  const snapshot = await getDocs(activityQuery)
+  const first = snapshot.docs[0]
+  if (!first) {
+    return false
+  }
+
+  await deleteDoc(doc(db, COLLECTION_NAME, first.id))
+  return true
 }
 
 export async function uploadActivityPhoto(userId: string, file: File) {

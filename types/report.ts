@@ -1,7 +1,7 @@
 ﻿import type { MealType } from "@/types/meal"
 import type { GptReportResponse } from "@/types/gpt"
 
-export const reportTypes = ["meals", "workouts", "general"] as const
+export const reportTypes = ["meals", "workouts", "activities", "general"] as const
 export const periodPresets = ["7d", "15d", "30d", "current_month", "custom"] as const
 
 export type ReportType = (typeof reportTypes)[number]
@@ -32,11 +32,19 @@ export interface MealStats {
   byPeriod: Record<string, number>
 }
 
+export interface ActivityStats {
+  activitiesCount: number
+  totalDuration: number
+  avgDuration: number
+  totalDistanceKm: number
+}
+
 export interface GeneralStats {
   consistencyScore: number
   activeDays: number
   bestWeek: string
   totalWorkouts: number
+  totalActivities: number
   totalMeals: number
   averageWorkoutDuration: number
 }
@@ -68,6 +76,27 @@ export interface LoadProgressPoint {
   load: number
 }
 
+export interface DailyActivityPoint {
+  date: string
+  activities: number
+}
+
+export interface WeeklyActivityPoint {
+  week: string
+  activities: number
+  averageDuration: number
+}
+
+export interface ActivityTypePoint {
+  type: string
+  value: number
+}
+
+export interface ActivityDistancePoint {
+  date: string
+  distanceKm: number
+}
+
 export interface MealTimelineItem {
   date: string
   time: string
@@ -89,13 +118,22 @@ export interface MealReportCharts {
   timeline: MealTimelineItem[]
 }
 
+export interface ActivityReportCharts {
+  activitiesByDay: DailyActivityPoint[]
+  activitiesByWeek: WeeklyActivityPoint[]
+  activityTypeDistribution: ActivityTypePoint[]
+  distanceByDay: ActivityDistancePoint[]
+}
+
 export interface GeneratedReport {
   periodStart: string
   periodEnd: string
   workoutStats: WorkoutStats
+  activityStats: ActivityStats
   mealStats: MealStats
   generalStats: GeneralStats
   workoutCharts: WorkoutReportCharts
+  activityCharts: ActivityReportCharts
   mealCharts: MealReportCharts
   summaryText: string
 }

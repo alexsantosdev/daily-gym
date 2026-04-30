@@ -80,10 +80,10 @@ export default function DashboardPage() {
 
     setIsLoadingReport(true)
 
-    void generateReportBundle(filters, meals, executions, workouts, plans)
+    void generateReportBundle(filters, meals, activities, executions, workouts, plans)
       .then(setReport)
       .finally(() => setIsLoadingReport(false))
-  }, [user?.uid, meals, executions, workouts, plans])
+  }, [user?.uid, meals, activities, executions, workouts, plans])
 
   useEffect(() => {
     let isMounted = true

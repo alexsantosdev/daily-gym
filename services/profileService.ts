@@ -55,6 +55,7 @@ function mapUserProfile(id: string, data: Partial<UserProfile>): UserProfile {
     targetWeightKg:
       typeof data.targetWeightKg === "number" ? Number(data.targetWeightKg) : undefined,
     notes: data.notes,
+    stravaIntegration: data.stravaIntegration,
     createdAt: data.createdAt ?? new Date().toISOString(),
     updatedAt: data.updatedAt ?? new Date().toISOString(),
   }
@@ -99,6 +100,7 @@ export async function createUserProfile(input: CreateUserProfileInput): Promise<
     mealsPerDayGoal: input.mealsPerDayGoal,
     targetWeightKg: input.targetWeightKg,
     notes: input.notes,
+    stravaIntegration: input.stravaIntegration,
     createdAt: now,
     updatedAt: now,
   })

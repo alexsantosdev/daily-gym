@@ -25,6 +25,7 @@ export function ReportFilters({ value, plans, workouts, onApply }: ReportFilters
   const reportTypeLabels: Record<ReportFilters["type"], string> = {
     general: "Geral",
     workouts: "Treinos",
+    activities: "Atividades",
     meals: "Refeicoes",
   }
 

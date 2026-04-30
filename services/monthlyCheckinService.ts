@@ -3,7 +3,6 @@
   collection,
   doc,
   getDocs,
-  limit,
   orderBy,
   query,
   updateDoc,
@@ -59,15 +58,15 @@ function mapMonthlyCheckin(id: string, data: Partial<UserMonthlyCheckin>): UserM
   }
 }
 
-async function findMonthCheckin(userId: string, month: number, year: number) {
+async function findLatestMonthCheckin(userId: string, month: number, year: number) {
   const { db } = assertFirebaseConfigured()
   const checkinQuery = query(
     collection(db, COLLECTION_NAME),
     where("userId", "==", userId),
     where("month", "==", month),
     where("year", "==", year),
-    orderBy("createdAt", "desc"),
-    limit(1)
+    orderBy("updatedAt", "desc"),
+    orderBy("createdAt", "desc")
   )
 
   const snapshot = await getDocs(checkinQuery)
@@ -78,7 +77,7 @@ export async function getCurrentMonthCheckin(userId: string): Promise<UserMonthl
   const now = new Date()
   const month = now.getMonth() + 1
   const year = now.getFullYear()
-  const found = await findMonthCheckin(userId, month, year)
+  const found = await findLatestMonthCheckin(userId, month, year)
 
   if (!found) {
     return null
@@ -92,8 +91,7 @@ export async function getMonthlyCheckins(userId: string): Promise<UserMonthlyChe
   const checkinsQuery = query(
     collection(db, COLLECTION_NAME),
     where("userId", "==", userId),
-    orderBy("year", "desc"),
-    orderBy("month", "desc"),
+    orderBy("updatedAt", "desc"),
     orderBy("createdAt", "desc")
   )
 
@@ -107,7 +105,6 @@ export async function createMonthlyCheckin(input: CreateMonthlyCheckinInput): Pr
   const { db } = assertFirebaseConfigured()
   const now = new Date().toISOString()
 
-  const existing = await findMonthCheckin(input.userId, input.month, input.year)
   const payload = stripUndefinedDeep<Omit<UserMonthlyCheckin, "id">>({
     userId: input.userId,
     month: input.month,
@@ -128,20 +125,6 @@ export async function createMonthlyCheckin(input: CreateMonthlyCheckinInput): Pr
     createdAt: now,
     updatedAt: now,
   })
-
-  if (existing) {
-    await updateDoc(doc(db, COLLECTION_NAME, existing.id), {
-      ...payload,
-      createdAt: (existing.data() as Partial<UserMonthlyCheckin>).createdAt ?? now,
-      updatedAt: now,
-    })
-
-    return mapMonthlyCheckin(existing.id, {
-      ...payload,
-      createdAt: (existing.data() as Partial<UserMonthlyCheckin>).createdAt ?? now,
-      updatedAt: now,
-    })
-  }
 
   const created = await addDoc(collection(db, COLLECTION_NAME), payload)
   return mapMonthlyCheckin(created.id, payload)

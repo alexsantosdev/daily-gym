@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import {
   createActivity,
   deleteActivity,
+  getActivityBySourceExternalId,
   getActivitiesByUser,
   updateActivity,
 } from "@/services/activityService"
@@ -15,6 +16,13 @@ interface ActivityUserProfile {
   displayName?: string | null
   email?: string | null
   photoURL?: string | null
+}
+
+interface ImportProgressPayload {
+  processed: number
+  total: number
+  created: number
+  skipped: number
 }
 
 export function useActivities(userId?: string, userProfile?: ActivityUserProfile) {
@@ -78,15 +86,72 @@ export function useActivities(userId?: string, userProfile?: ActivityUserProfile
     [refresh]
   )
 
+  const createImportedStravaActivities = useCallback(
+    async (
+      items: Array<Omit<CreateActivityInput, "userId">>,
+      options?: {
+        onProgress?: (payload: ImportProgressPayload) => void
+      }
+    ) => {
+      if (!userId || items.length === 0) {
+        return { created: 0, skipped: 0 }
+      }
+
+      let created = 0
+      let skipped = 0
+      let processed = 0
+      const total = items.length
+
+      options?.onProgress?.({ processed, total, created, skipped })
+
+      for (const item of items) {
+        const externalSourceId = item.externalSourceId
+        if (item.source === "strava" && externalSourceId) {
+          const existing = await getActivityBySourceExternalId(userId, "strava", externalSourceId)
+          if (existing) {
+            skipped += 1
+            processed += 1
+            options?.onProgress?.({ processed, total, created, skipped })
+            continue
+          }
+        }
+
+        const createdActivity = await createActivity({ ...item, userId })
+        await syncActivityToGroups({
+          userId,
+          userName: userProfile?.displayName || userProfile?.email,
+          userPhotoURL: userProfile?.photoURL,
+          activity: createdActivity,
+        })
+        created += 1
+        processed += 1
+        options?.onProgress?.({ processed, total, created, skipped })
+      }
+
+      await refresh()
+      return { created, skipped }
+    },
+    [refresh, userId, userProfile?.displayName, userProfile?.email, userProfile?.photoURL]
+  )
+
   return useMemo(
     () => ({
       activities,
       isLoading,
       refresh,
       createActivityEntry,
+      createImportedStravaActivities,
       updateActivityEntry,
       deleteActivityEntry,
     }),
-    [activities, createActivityEntry, deleteActivityEntry, isLoading, refresh, updateActivityEntry]
+    [
+      activities,
+      createActivityEntry,
+      createImportedStravaActivities,
+      deleteActivityEntry,
+      isLoading,
+      refresh,
+      updateActivityEntry,
+    ]
   )
 }

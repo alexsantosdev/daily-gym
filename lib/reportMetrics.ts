@@ -5,8 +5,11 @@ import {
   parseIsoDateLocal,
   toIsoDate,
 } from "@/lib/date"
+import type { Activity } from "@/types/activity"
 import type { Meal } from "@/types/meal"
 import type {
+  ActivityReportCharts,
+  ActivityStats,
   DailyMealPoint,
   GeneralStats,
   GeneratedReport,
@@ -91,6 +94,22 @@ function buildMealStats(meals: Meal[]): MealStats {
     mealsCount: meals.length,
     freeMealDays: freeMealDates.size,
     byPeriod,
+  }
+}
+
+function buildActivityStats(activities: Activity[]): ActivityStats {
+  const totalDuration = activities.reduce((total, activity) => total + (activity.durationMinutes ?? 0), 0)
+  const avgDuration = activities.length > 0 ? Math.round(totalDuration / activities.length) : 0
+  const totalDistanceMeters = activities.reduce(
+    (total, activity) => total + (activity.sourceMetadata?.distanceMeters ?? 0),
+    0
+  )
+
+  return {
+    activitiesCount: activities.length,
+    totalDuration,
+    avgDuration,
+    totalDistanceKm: Number((totalDistanceMeters / 1000).toFixed(2)),
   }
 }
 
@@ -189,6 +208,80 @@ function buildMealsByDayPoints(meals: Meal[], filters: ReportFilters): DailyMeal
   }))
 }
 
+function buildActivitiesByDayPoints(activities: Activity[], filters: ReportFilters) {
+  const dates = getLastNDates(
+    Math.max(
+      1,
+      Math.ceil(
+        (parseIsoDateLocal(filters.periodEnd).getTime() - parseIsoDateLocal(filters.periodStart).getTime()) / 86400000
+      ) + 1
+    ),
+    filters.periodEnd
+  )
+
+  return dates.map((date) => ({
+    date: toShortDate(date),
+    activities: activities.filter((activity) => activity.date === date).length,
+  }))
+}
+
+function buildActivitiesByWeekPoints(activities: Activity[]) {
+  const grouped = new Map<string, { count: number; durations: number[] }>()
+
+  activities.forEach((activity) => {
+    const week = getWeekKey(activity.date)
+    const current = grouped.get(week) ?? { count: 0, durations: [] }
+    current.count += 1
+    if (activity.durationMinutes && activity.durationMinutes > 0) {
+      current.durations.push(activity.durationMinutes)
+    }
+    grouped.set(week, current)
+  })
+
+  return Array.from(grouped.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([week, values]) => ({
+      week,
+      activities: values.count,
+      averageDuration: values.durations.length
+        ? Math.round(values.durations.reduce((acc, item) => acc + item, 0) / values.durations.length)
+        : 0,
+    }))
+}
+
+function buildActivityTypeDistribution(activities: Activity[]) {
+  const grouped = new Map<string, number>()
+
+  activities.forEach((activity) => {
+    grouped.set(activity.type, (grouped.get(activity.type) ?? 0) + 1)
+  })
+
+  return Array.from(grouped.entries()).map(([type, value]) => ({ type, value }))
+}
+
+function buildActivityDistanceByDay(activities: Activity[], filters: ReportFilters) {
+  const dates = getLastNDates(
+    Math.max(
+      1,
+      Math.ceil(
+        (parseIsoDateLocal(filters.periodEnd).getTime() - parseIsoDateLocal(filters.periodStart).getTime()) / 86400000
+      ) + 1
+    ),
+    filters.periodEnd
+  )
+
+  return dates.map((date) => {
+    const totalMeters = activities
+      .filter((activity) => activity.date === date)
+      .reduce((acc, activity) => acc + (activity.sourceMetadata?.distanceMeters ?? 0), 0)
+
+    return {
+      date: toShortDate(date),
+      distanceKm: Number((totalMeters / 1000).toFixed(2)),
+    }
+  })
+}
+
 function buildMealTypeDistribution(meals: Meal[]) {
   const grouped = new Map<string, number>()
 
@@ -246,24 +339,20 @@ function getBestWeek(weekly: WeeklyWorkoutPoint[]): string {
   return `${best.week} (${best.executed} treinos executados)`
 }
 
-function calculateActiveDays(meals: Meal[], executions: WorkoutExecution[]): number {
-  const dates = new Set<string>()
-
-  meals.forEach((meal) => dates.add(meal.date))
-  executions.forEach((execution) => dates.add(execution.date))
-
-  return dates.size
-}
-
-function calculateConsistencyLast7Days(meals: Meal[], executions: WorkoutExecution[]): number {
+function calculateConsistencyLast7Days(
+  meals: Meal[],
+  executions: WorkoutExecution[],
+  activities: Activity[]
+): number {
   const recentDates = getLastNDates(7)
   const withMealOrWorkout = recentDates.filter((date) => {
     const mealExists = meals.some((meal) => meal.date === date)
     const workoutExists = executions.some(
       (execution) => execution.date === date && execution.status === "executed"
     )
+    const activityExists = activities.some((activity) => activity.date === date)
 
-    return mealExists || workoutExists
+    return mealExists || workoutExists || activityExists
   }).length
 
   return Math.round((withMealOrWorkout / 7) * 100)
@@ -271,6 +360,7 @@ function calculateConsistencyLast7Days(meals: Meal[], executions: WorkoutExecuti
 
 function buildGeneralStats(
   workoutStats: WorkoutStats,
+  activityStats: ActivityStats,
   mealStats: MealStats,
   weeklyPoints: WeeklyWorkoutPoint[],
   activeDays: number,
@@ -285,6 +375,7 @@ function buildGeneralStats(
     activeDays,
     bestWeek: getBestWeek(weeklyPoints),
     totalWorkouts: workoutStats.workoutsExecuted,
+    totalActivities: activityStats.activitiesCount,
     totalMeals: mealStats.mealsCount,
     averageWorkoutDuration: workoutStats.avgDuration,
   }
@@ -294,11 +385,13 @@ function buildSummaryText(
   filters: ReportFilters,
   generalStats: GeneralStats,
   workoutStats: WorkoutStats,
+  activityStats: ActivityStats,
   mealStats: MealStats
 ) {
   return [
     `Periodo de ${filters.periodStart} a ${filters.periodEnd}.`,
     `Foram ${workoutStats.workoutsExecuted} treinos executados de ${workoutStats.workoutsPlanned} planejados.`,
+    `Foram registradas ${activityStats.activitiesCount} atividades com ${activityStats.totalDistanceKm} km acumulados.`,
     `Foram registradas ${mealStats.mealsCount} refeicoes com media de ${generalStats.averageWorkoutDuration} minutos por treino.`,
     `Score de consistencia: ${generalStats.consistencyScore}%. Semana destaque: ${generalStats.bestWeek}.`,
   ].join(" ")
@@ -307,6 +400,7 @@ function buildSummaryText(
 export function buildReportMetrics(
   filters: ReportFilters,
   meals: Meal[],
+  activities: Activity[],
   executions: WorkoutExecution[],
   workouts: Workout[],
   plans: WorkoutPlan[]
@@ -326,6 +420,7 @@ export function buildReportMetrics(
 
     return true
   })
+  const filteredActivities = filterDataByReportRange(activities, filters)
 
   const filteredWorkouts = workouts.filter((workout) => {
     if (filters.planId && workout.planId !== filters.planId) {
@@ -344,15 +439,25 @@ export function buildReportMetrics(
   const totalPlanned = weeklyPoints.reduce((acc, item) => acc + item.planned, 0)
 
   const workoutStats = buildWorkoutStats(filteredExecutions, totalPlanned)
+  const activityStats = buildActivityStats(filteredActivities)
   const mealStats = buildMealStats(filteredMeals)
-  const activeDays = calculateActiveDays(filteredMeals, filteredExecutions)
-  const consistencyLast7Days = calculateConsistencyLast7Days(filteredMeals, filteredExecutions)
+  const mergedActiveDates = new Set<string>()
+  filteredMeals.forEach((meal) => mergedActiveDates.add(meal.date))
+  filteredExecutions.forEach((execution) => mergedActiveDates.add(execution.date))
+  filteredActivities.forEach((activity) => mergedActiveDates.add(activity.date))
+
+  const consistencyLast7Days = calculateConsistencyLast7Days(
+    filteredMeals,
+    filteredExecutions,
+    filteredActivities
+  )
 
   const generalStats = buildGeneralStats(
     workoutStats,
+    activityStats,
     mealStats,
     weeklyPoints,
-    activeDays,
+    mergedActiveDates.size,
     consistencyLast7Days
   )
 
@@ -376,16 +481,24 @@ export function buildReportMetrics(
     averageDurationByWeek: weeklyPoints,
     loadProgressByExercise: buildLoadProgress(filteredExecutions, filters.exerciseName),
   }
+  const activityCharts: ActivityReportCharts = {
+    activitiesByDay: buildActivitiesByDayPoints(filteredActivities, filters),
+    activitiesByWeek: buildActivitiesByWeekPoints(filteredActivities),
+    activityTypeDistribution: buildActivityTypeDistribution(filteredActivities),
+    distanceByDay: buildActivityDistanceByDay(filteredActivities, filters),
+  }
 
   return {
     periodStart: filters.periodStart,
     periodEnd: filters.periodEnd,
     workoutStats,
+    activityStats,
     mealStats,
     generalStats,
     workoutCharts,
+    activityCharts,
     mealCharts,
-    summaryText: buildSummaryText(filters, generalStats, workoutStats, mealStats),
+    summaryText: buildSummaryText(filters, generalStats, workoutStats, activityStats, mealStats),
   }
 }
 

@@ -30,6 +30,7 @@ import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { getDateRangeFromPreset } from "@/lib/date"
+import { useActivities } from "@/hooks/useActivities"
 import { useAuth } from "@/hooks/useAuth"
 import { useMeals } from "@/hooks/useMeals"
 import { useWorkouts } from "@/hooks/useWorkouts"
@@ -59,9 +60,23 @@ function createInitialFilters(userId = ""): ReportFiltersType {
   }
 }
 
+function getReportTypeLabel(type: ReportFiltersType["type"]) {
+  if (type === "general") {
+    return "Geral"
+  }
+  if (type === "workouts") {
+    return "Treinos"
+  }
+  if (type === "activities") {
+    return "Atividades"
+  }
+  return "Refeicoes"
+}
+
 export default function ReportsPage() {
   const { user } = useAuth()
   const { meals, isLoading: mealsLoading } = useMeals(user?.uid)
+  const { activities, isLoading: activitiesLoading } = useActivities(user?.uid)
   const { plans, workouts, executions, isLoading: workoutsLoading } = useWorkouts(user?.uid)
 
   const [filters, setFilters] = useState<ReportFiltersType>(() => createInitialFilters())
@@ -100,12 +115,12 @@ export default function ReportsPage() {
     }
 
     setIsGenerating(true)
-    void generateReportBundle(filters, meals, executions, workouts, plans)
+    void generateReportBundle(filters, meals, activities, executions, workouts, plans)
       .then(setReport)
       .finally(() => setIsGenerating(false))
-  }, [filters, meals, executions, workouts, plans])
+  }, [activities, filters, meals, executions, workouts, plans])
 
-  const isLoadingData = mealsLoading || workoutsLoading || isGenerating
+  const isLoadingData = mealsLoading || workoutsLoading || activitiesLoading || isGenerating
 
   const generalItems = useMemo(() => {
     if (!report) {
@@ -115,6 +130,7 @@ export default function ReportsPage() {
     return [
       { label: "Dias ativos", value: report.generalStats.activeDays },
       { label: "Total de treinos", value: report.generalStats.totalWorkouts },
+      { label: "Total de atividades", value: report.generalStats.totalActivities },
       { label: "Total de refeicoes", value: report.generalStats.totalMeals },
       { label: "Media de duracao", value: `${report.generalStats.averageWorkoutDuration} min` },
       { label: "Melhor semana", value: report.generalStats.bestWeek },
@@ -172,6 +188,7 @@ export default function ReportsPage() {
                     workoutsSummary: [
                       `${report.workoutStats.workoutsExecuted} treinos executados`,
                       `${report.workoutStats.workoutsPlanned} treinos planejados`,
+                      `${report.activityStats.activitiesCount} atividades registradas`,
                     ],
                     consistencyMetrics: {
                       score: report.generalStats.consistencyScore,
@@ -251,8 +268,9 @@ export default function ReportsPage() {
       </div>
 
       <Tabs defaultValue="workouts">
-        <TabsList className="grid h-auto grid-cols-1 gap-1 sm:grid-cols-3 sm:h-10">
+        <TabsList className="grid h-auto grid-cols-1 gap-1 sm:grid-cols-4 sm:h-10">
           <TabsTrigger value="workouts">Treinos</TabsTrigger>
+          <TabsTrigger value="activities">Atividades</TabsTrigger>
           <TabsTrigger value="meals">Refeicoes</TabsTrigger>
           <TabsTrigger value="general">Geral</TabsTrigger>
         </TabsList>
@@ -359,6 +377,97 @@ export default function ReportsPage() {
               )}
             </div>
           </ChartCard>
+        </TabsContent>
+
+        <TabsContent value="activities" className="space-y-4">
+          <div className="grid gap-4 lg:grid-cols-2">
+            <ChartCard title="Atividades por dia" description="Frequencia diaria">
+              <div className="h-64 sm:h-72">
+                {isLoadingData || !report ? (
+                  <Skeleton className="h-full" />
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={report.activityCharts.activitiesByDay}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                      <XAxis dataKey="date" />
+                      <YAxis allowDecimals={false} />
+                      <Tooltip />
+                      <Bar dataKey="activities" fill="var(--chart-1)" radius={6} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+            </ChartCard>
+
+            <ChartCard title="Atividades por semana" description="Volume semanal">
+              <div className="h-64 sm:h-72">
+                {isLoadingData || !report ? (
+                  <Skeleton className="h-full" />
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={report.activityCharts.activitiesByWeek}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                      <XAxis dataKey="week" />
+                      <YAxis allowDecimals={false} />
+                      <Tooltip />
+                      <Bar dataKey="activities" fill="var(--chart-2)" radius={6} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+            </ChartCard>
+
+            <ChartCard title="Tipos de atividade" description="Distribuicao por tipo">
+              <div className="h-64 sm:h-72">
+                {isLoadingData || !report ? (
+                  <Skeleton className="h-full" />
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={report.activityCharts.activityTypeDistribution} dataKey="value" nameKey="type" outerRadius={100}>
+                        {report.activityCharts.activityTypeDistribution.map((entry, index) => (
+                          <Cell key={`${entry.type}-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+            </ChartCard>
+
+            <ChartCard title="Distancia por dia" description="Quilometragem acumulada">
+              <div className="h-64 sm:h-72">
+                {isLoadingData || !report ? (
+                  <Skeleton className="h-full" />
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={report.activityCharts.distanceByDay}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                      <XAxis dataKey="date" />
+                      <YAxis allowDecimals={false} />
+                      <Tooltip />
+                      <Line type="monotone" dataKey="distanceKm" stroke="var(--chart-3)" strokeWidth={2} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+            </ChartCard>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <section className="rounded-2xl border border-border/70 bg-card/60 p-3">
+              <p className="text-xs text-muted-foreground">Total de atividades</p>
+              <p className="text-2xl font-semibold">{report?.activityStats.activitiesCount ?? 0}</p>
+              <p className="text-xs text-muted-foreground">Registros no periodo</p>
+            </section>
+            <section className="rounded-2xl border border-border/70 bg-card/60 p-3">
+              <p className="text-xs text-muted-foreground">Distancia total</p>
+              <p className="text-2xl font-semibold">{report?.activityStats.totalDistanceKm ?? 0} km</p>
+              <p className="text-xs text-muted-foreground">Somatorio de distancia registrada</p>
+            </section>
+          </div>
         </TabsContent>
 
         <TabsContent value="meals" className="space-y-4">
@@ -484,7 +593,7 @@ export default function ReportsPage() {
               <div key={saved.id} className="rounded-lg border border-border p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <p className="text-sm font-medium">{saved.type === "general" ? "Geral" : saved.type === "workouts" ? "Treinos" : "Refeicoes"}</p>
+                    <p className="text-sm font-medium">{getReportTypeLabel(saved.type)}</p>
                     <p className="text-xs text-muted-foreground">
                       {saved.periodStart} ate {saved.periodEnd}
                     </p>
