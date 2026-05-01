@@ -78,7 +78,7 @@ function TabsTrigger({ className, value, ...props }: React.ComponentProps<"butto
       className={cn(
         "inline-flex h-8 items-center justify-center rounded-lg px-3 text-sm font-medium transition-colors",
         isActive
-          ? "bg-primary/12 text-primary"
+          ? "bg-secondary text-secondary-foreground"
           : "text-muted-foreground hover:bg-background/80 hover:text-foreground",
         className
       )}

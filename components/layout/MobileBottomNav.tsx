@@ -35,7 +35,7 @@ export function MobileBottomNav({
               className={cn(
                 "flex flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-[10px] font-medium transition-colors",
                 isActive
-                  ? "bg-primary/12 text-primary"
+                  ? "bg-secondary text-secondary-foreground"
                   : "text-muted-foreground hover:bg-muted/70 hover:text-foreground"
               )}
             >

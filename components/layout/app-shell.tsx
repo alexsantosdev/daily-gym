@@ -169,7 +169,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 className={cn(
                   "inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors",
                   isActive
-                    ? "border-primary/35 bg-primary/10 text-primary"
+                    ? "border-border bg-secondary text-secondary-foreground"
                     : "border-border/60 bg-background text-muted-foreground hover:bg-muted/40 hover:text-foreground"
                 )}
               >
