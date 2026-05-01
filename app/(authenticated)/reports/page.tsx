@@ -73,6 +73,33 @@ function getReportTypeLabel(type: ReportFiltersType["type"]) {
   return "Refeicoes"
 }
 
+function formatWeekLabel(value: string): string {
+  const match = value.match(/^(\d{4})-W(\d{2})$/)
+  if (!match) {
+    return value
+  }
+
+  const [, year, week] = match
+  return `Sem ${week}/${year}`
+}
+
+function getActivityTypeLabel(type: string): string {
+  const normalized = type.trim().toLowerCase()
+  if (normalized === "walk") {
+    return "Caminhada"
+  }
+  if (normalized === "dance") {
+    return "Danca"
+  }
+  if (normalized === "cardio") {
+    return "Cardio"
+  }
+  if (normalized === "custom") {
+    return "Personalizada"
+  }
+  return type
+}
+
 export default function ReportsPage() {
   const { user } = useAuth()
   const { meals, isLoading: mealsLoading } = useMeals(user?.uid)
@@ -136,6 +163,24 @@ export default function ReportsPage() {
       { label: "Melhor semana", value: report.generalStats.bestWeek },
     ]
   }, [report])
+
+  const activityTypeDistributionData = useMemo(
+    () =>
+      (report?.activityCharts.activityTypeDistribution ?? []).map((item) => ({
+        ...item,
+        typeLabel: getActivityTypeLabel(item.type),
+      })),
+    [report]
+  )
+
+  const mealTypeDistributionData = useMemo(
+    () =>
+      (report?.mealCharts.mealTypeDistribution ?? []).map((item) => ({
+        ...item,
+        typeLabel: getMealTypeLabel(item.type as Parameters<typeof getMealTypeLabel>[0]),
+      })),
+    [report]
+  )
 
   return (
     <div className="space-y-5">
@@ -285,11 +330,14 @@ export default function ReportsPage() {
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={report.workoutCharts.workoutsByWeek}>
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                      <XAxis dataKey="week" />
+                      <XAxis dataKey="week" tickFormatter={formatWeekLabel} />
                       <YAxis allowDecimals={false} />
-                      <Tooltip />
+                      <Tooltip
+                        labelFormatter={(label) => formatWeekLabel(String(label))}
+                        formatter={(value) => [value, "Treinos executados"]}
+                      />
                       <Legend />
-                      <Bar dataKey="executed" fill="var(--chart-1)" radius={6} />
+                      <Bar dataKey="executed" name="Treinos executados" fill="var(--chart-1)" radius={6} />
                     </BarChart>
                   </ResponsiveContainer>
                 )}
@@ -304,12 +352,12 @@ export default function ReportsPage() {
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={report.workoutCharts.plannedVsExecuted}>
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                      <XAxis dataKey="week" />
+                      <XAxis dataKey="week" tickFormatter={formatWeekLabel} />
                       <YAxis allowDecimals={false} />
-                      <Tooltip />
+                      <Tooltip labelFormatter={(label) => formatWeekLabel(String(label))} />
                       <Legend />
-                      <Bar dataKey="planned" fill="var(--chart-4)" radius={6} />
-                      <Bar dataKey="executed" fill="var(--chart-2)" radius={6} />
+                      <Bar dataKey="planned" name="Planejados" fill="var(--chart-4)" radius={6} />
+                      <Bar dataKey="executed" name="Executados" fill="var(--chart-2)" radius={6} />
                     </BarChart>
                   </ResponsiveContainer>
                 )}
@@ -324,10 +372,13 @@ export default function ReportsPage() {
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={report.workoutCharts.averageDurationByWeek}>
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                      <XAxis dataKey="week" />
+                      <XAxis dataKey="week" tickFormatter={formatWeekLabel} />
                       <YAxis allowDecimals={false} />
-                      <Tooltip />
-                      <Bar dataKey="averageDuration" fill="var(--chart-3)" radius={6} />
+                      <Tooltip
+                        labelFormatter={(label) => formatWeekLabel(String(label))}
+                        formatter={(value) => [`${value} min`, "Duracao media"]}
+                      />
+                      <Bar dataKey="averageDuration" name="Duracao media" fill="var(--chart-3)" radius={6} />
                     </BarChart>
                   </ResponsiveContainer>
                 )}
@@ -351,7 +402,7 @@ export default function ReportsPage() {
                           <Cell key={`${entry.name}-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                         ))}
                       </Pie>
-                      <Tooltip />
+                      <Tooltip formatter={(value) => [value, "Execucoes"]} />
                       <Legend />
                     </PieChart>
                   </ResponsiveContainer>
@@ -370,8 +421,8 @@ export default function ReportsPage() {
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                     <XAxis dataKey="date" />
                     <YAxis allowDecimals={false} />
-                    <Tooltip />
-                    <Line type="monotone" dataKey="load" stroke="var(--chart-5)" strokeWidth={2} />
+                    <Tooltip formatter={(value) => [value, "Carga"]} />
+                    <Line type="monotone" dataKey="load" name="Carga" stroke="var(--chart-5)" strokeWidth={2} />
                   </LineChart>
                 </ResponsiveContainer>
               )}
@@ -391,8 +442,8 @@ export default function ReportsPage() {
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                       <XAxis dataKey="date" />
                       <YAxis allowDecimals={false} />
-                      <Tooltip />
-                      <Bar dataKey="activities" fill="var(--chart-1)" radius={6} />
+                      <Tooltip formatter={(value) => [value, "Atividades"]} />
+                      <Bar dataKey="activities" name="Atividades" fill="var(--chart-1)" radius={6} />
                     </BarChart>
                   </ResponsiveContainer>
                 )}
@@ -407,10 +458,13 @@ export default function ReportsPage() {
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={report.activityCharts.activitiesByWeek}>
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                      <XAxis dataKey="week" />
+                      <XAxis dataKey="week" tickFormatter={formatWeekLabel} />
                       <YAxis allowDecimals={false} />
-                      <Tooltip />
-                      <Bar dataKey="activities" fill="var(--chart-2)" radius={6} />
+                      <Tooltip
+                        labelFormatter={(label) => formatWeekLabel(String(label))}
+                        formatter={(value) => [value, "Atividades"]}
+                      />
+                      <Bar dataKey="activities" name="Atividades" fill="var(--chart-2)" radius={6} />
                     </BarChart>
                   </ResponsiveContainer>
                 )}
@@ -424,12 +478,12 @@ export default function ReportsPage() {
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
-                      <Pie data={report.activityCharts.activityTypeDistribution} dataKey="value" nameKey="type" outerRadius={100}>
-                        {report.activityCharts.activityTypeDistribution.map((entry, index) => (
-                          <Cell key={`${entry.type}-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                      <Pie data={activityTypeDistributionData} dataKey="value" nameKey="typeLabel" outerRadius={100}>
+                        {activityTypeDistributionData.map((entry, index) => (
+                          <Cell key={`${entry.typeLabel}-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                         ))}
                       </Pie>
-                      <Tooltip />
+                      <Tooltip formatter={(value) => [value, "Quantidade"]} />
                       <Legend />
                     </PieChart>
                   </ResponsiveContainer>
@@ -447,8 +501,8 @@ export default function ReportsPage() {
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                       <XAxis dataKey="date" />
                       <YAxis allowDecimals={false} />
-                      <Tooltip />
-                      <Line type="monotone" dataKey="distanceKm" stroke="var(--chart-3)" strokeWidth={2} />
+                      <Tooltip formatter={(value) => [`${value} km`, "Distancia"]} />
+                      <Line type="monotone" dataKey="distanceKm" name="Distancia" stroke="var(--chart-3)" strokeWidth={2} />
                     </LineChart>
                   </ResponsiveContainer>
                 )}
@@ -482,8 +536,8 @@ export default function ReportsPage() {
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                       <XAxis dataKey="date" />
                       <YAxis allowDecimals={false} />
-                      <Tooltip />
-                      <Bar dataKey="meals" fill="var(--chart-2)" radius={6} />
+                      <Tooltip formatter={(value) => [value, "Refeicoes"]} />
+                      <Bar dataKey="meals" name="Refeicoes" fill="var(--chart-2)" radius={6} />
                     </BarChart>
                   </ResponsiveContainer>
                 )}
@@ -498,17 +552,17 @@ export default function ReportsPage() {
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
-                        data={report.mealCharts.mealTypeDistribution}
+                        data={mealTypeDistributionData}
                         dataKey="value"
-                        nameKey="type"
+                        nameKey="typeLabel"
                         innerRadius={45}
                         outerRadius={100}
                       >
-                        {report.mealCharts.mealTypeDistribution.map((entry, index) => (
-                          <Cell key={`${entry.type}-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                        {mealTypeDistributionData.map((entry, index) => (
+                          <Cell key={`${entry.typeLabel}-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                         ))}
                       </Pie>
-                      <Tooltip />
+                      <Tooltip formatter={(value) => [value, "Quantidade"]} />
                       <Legend />
                     </PieChart>
                   </ResponsiveContainer>

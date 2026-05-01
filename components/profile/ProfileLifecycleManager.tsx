@@ -13,7 +13,6 @@ import { Card, CardContent } from "@/components/ui/card"
 import { useAuth } from "@/hooks/useAuth"
 import {
   getCurrentMonthCheckin,
-  shouldRequestMonthlyCheckin,
 } from "@/services/monthlyCheckinService"
 import { getUserProfile, shouldShowOnboarding } from "@/services/profileService"
 import type { UserMonthlyCheckin, UserProfile } from "@/types/profile"
@@ -44,11 +43,10 @@ export function ProfileLifecycleManager() {
       setIsChecking(true)
 
       try {
-        const [loadedProfile, shouldOnboard, monthCheckin, shouldAskMonthly] = await Promise.all([
+        const [loadedProfile, shouldOnboard, monthCheckin] = await Promise.all([
           getUserProfile(user.uid),
           shouldShowOnboarding(user.uid),
           getCurrentMonthCheckin(user.uid),
-          shouldRequestMonthlyCheckin(user.uid),
         ])
 
         if (!isMounted) {
@@ -59,7 +57,7 @@ export function ProfileLifecycleManager() {
         setCurrentCheckin(monthCheckin)
         setOnboardingPending(shouldOnboard)
         setShowOnboarding(shouldOnboard)
-        setShowMonthlyCheckin(!shouldOnboard && shouldAskMonthly)
+        setShowMonthlyCheckin(false)
       } finally {
         if (isMounted) {
           setIsChecking(false)
@@ -95,11 +93,6 @@ export function ProfileLifecycleManager() {
           setProfile(savedProfile)
           setOnboardingPending(false)
           setShowOnboarding(false)
-          void shouldRequestMonthlyCheckin(user.uid).then((needMonthly) => {
-            if (needMonthly) {
-              setShowMonthlyCheckin(true)
-            }
-          })
         }}
       />
 

@@ -56,7 +56,6 @@ import {
 import {
   getCurrentMonthCheckin,
   getMonthlyCheckins,
-  shouldRequestMonthlyCheckin,
 } from "@/services/monthlyCheckinService"
 import { getUserProfile, updateUserProfile } from "@/services/profileService"
 import type { UserMonthlyCheckin, UserProfile } from "@/types/profile"
@@ -205,11 +204,10 @@ export default function ProfilePage() {
       setIsLoading(true)
 
       try {
-        const [loadedProfile, loadedCheckins, loadedCurrent, needMonthlyCheckin, loadedStravaConnection] = await Promise.all([
+        const [loadedProfile, loadedCheckins, loadedCurrent, loadedStravaConnection] = await Promise.all([
           getUserProfile(user.uid),
           getMonthlyCheckins(user.uid),
           getCurrentMonthCheckin(user.uid),
-          shouldRequestMonthlyCheckin(user.uid),
           getStravaConnection(user.uid),
         ])
 
@@ -222,10 +220,6 @@ export default function ProfilePage() {
         setCurrentMonthCheckin(loadedCurrent)
         setStravaConnection(loadedStravaConnection)
         setImportStartDate(toDateInputFromIso(loadedStravaConnection?.lastSyncAt))
-
-        if (needMonthlyCheckin) {
-          setShowMonthlyDrawer(true)
-        }
       } catch (loadError) {
         if (isMounted) {
           setError(loadError instanceof Error ? loadError.message : "Falha ao carregar perfil.")

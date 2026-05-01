@@ -11,6 +11,7 @@
 } from "firebase/firestore"
 
 import { assertFirebaseConfigured } from "@/lib/firebase"
+import { normalizeRepsValue } from "@/lib/reps"
 import type {
   CreateWorkoutInput,
   UpdateWorkoutInput,
@@ -36,14 +37,39 @@ function stripUndefinedDeep<T>(value: T): T {
 }
 
 function sanitizeExercise(exercise: Partial<WorkoutExercise>): WorkoutExercise {
+  const toSafeNumber = (value: unknown, fallback = 0) => {
+    if (typeof value === "number") {
+      return Number.isFinite(value) ? value : fallback
+    }
+
+    if (typeof value === "string") {
+      const normalized = value.replace(",", ".").trim()
+      const direct = Number(normalized)
+      if (Number.isFinite(direct)) {
+        return direct
+      }
+
+      // Support ranges/annotations such as "8-10", "10 a 12" and "90s".
+      const matched = normalized.match(/\d+(\.\d+)?/)
+      if (matched) {
+        const parsed = Number(matched[0])
+        if (Number.isFinite(parsed)) {
+          return parsed
+        }
+      }
+    }
+
+    return fallback
+  }
+
   return {
     name: exercise.name ?? "",
     muscleGroup: exercise.muscleGroup ?? "",
-    sets: Number(exercise.sets ?? 0),
-    reps: Number(exercise.reps ?? 0),
+    sets: toSafeNumber(exercise.sets, 0),
+    reps: normalizeRepsValue(exercise.reps, "0"),
     suggestedLoad: exercise.suggestedLoad,
     plannedRestSeconds: exercise.plannedRestSeconds
-      ? Number(exercise.plannedRestSeconds)
+      ? toSafeNumber(exercise.plannedRestSeconds)
       : undefined,
     notes: exercise.notes,
   }

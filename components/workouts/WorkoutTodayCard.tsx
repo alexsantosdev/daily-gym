@@ -1,9 +1,12 @@
 import Link from "next/link"
 
+import { CheckCircle, ClockCountdown } from "@phosphor-icons/react"
+
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { getWeekdayLabel } from "@/lib/date"
+import { isCardioWorkout } from "@/lib/workoutMode"
 import { WorkoutReceipt } from "@/components/workouts/WorkoutReceipt"
 import type { Workout, WorkoutExecution, WorkoutPlan } from "@/types/workout"
 
@@ -23,6 +26,7 @@ export function WorkoutTodayCard({
   const hasTrainedToday = Boolean(executionToday)
   const workout = executionWorkout ?? plannedWorkout
   const plan = executionPlan ?? plannedPlan
+  const workoutIsCardio = isCardioWorkout(workout)
 
   return (
     <Card>
@@ -37,7 +41,22 @@ export function WorkoutTodayCard({
                 <p className="text-sm font-medium">{workout.name}</p>
                 <p className="text-xs text-muted-foreground">{workout.muscleGroup}</p>
               </div>
-              {typeof workout.weekday === "number" ? <Badge>{getWeekdayLabel(workout.weekday)}</Badge> : null}
+              <div className="flex items-center gap-2">
+                <Badge variant={workoutIsCardio ? "default" : "secondary"}>
+                  {workoutIsCardio ? (
+                    <>
+                      <ClockCountdown className="mr-1 size-3.5" />
+                      Cardio
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="mr-1 size-3.5" />
+                      Forca
+                    </>
+                  )}
+                </Badge>
+                {typeof workout.weekday === "number" ? <Badge>{getWeekdayLabel(workout.weekday)}</Badge> : null}
+              </div>
             </div>
             <WorkoutReceipt
               workout={workout}

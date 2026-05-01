@@ -3,6 +3,7 @@
 import { formatDatePtBr, formatDateTimePtBr, formatWeekdayDatePtBr, minutesBetween } from "@/lib/date"
 import { getWorkoutExecutionStatusLabel, getWorkoutPlanGoalLabel } from "@/lib/labels"
 import { buildWorkoutReceiptItems } from "@/lib/workoutReceipt"
+import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import type { Workout, WorkoutExecution, WorkoutPlan } from "@/types/workout"
 
@@ -22,6 +23,13 @@ export function WorkoutReceipt({
   flat?: boolean
 }) {
   const receiptItems = buildWorkoutReceiptItems(workout, mode === "executed" ? execution : undefined)
+  const hasCardioItems = receiptItems.some((item) => item.isCardio)
+  const hasStrengthItems = receiptItems.some((item) => !item.isCardio)
+  const workoutModeLabel = hasCardioItems && hasStrengthItems
+    ? "Hibrido"
+    : hasCardioItems
+      ? "Cardio"
+      : "Forca"
   const completedCount = receiptItems.filter((item) => item.completed).length
   const workoutStatus = execution?.status ?? (mode === "executed" ? "executed" : "planned")
   const durationMinutes = execution?.durationMinutes ?? minutesBetween(execution?.startedAt, execution?.finishedAt)
@@ -40,7 +48,10 @@ export function WorkoutReceipt({
           <p className="text-[11px] font-semibold tracking-[0.18em] text-muted-foreground">DAILY-GYM</p>
           <p className="font-mono text-lg font-bold uppercase tracking-wider">Ficha de Treino</p>
         </div>
-        <Receipt className="size-5 text-muted-foreground" />
+        <div className="flex flex-col items-end gap-2">
+          <Receipt className="size-5 text-muted-foreground" />
+          <Badge variant={workoutModeLabel === "Cardio" ? "default" : "secondary"}>{workoutModeLabel}</Badge>
+        </div>
       </div>
 
       <div className="my-3 border-t border-dashed border-border" />
@@ -94,13 +105,24 @@ export function WorkoutReceipt({
               </p>
               {item.muscleGroup ? <p className="text-muted-foreground">Grupo: {item.muscleGroup}</p> : null}
               <p className="text-muted-foreground">
-                Planejado: {item.plannedSets ?? "-"}x{item.plannedReps ?? "-"}
-                {item.plannedLoad ? ` · ${item.plannedLoad}` : ""}
+                {item.isCardio
+                  ? `Planejado (cardio): ${item.plannedCardioSummary ?? "-"}`
+                  : `Planejado: ${item.plannedSets ?? "-"}x${item.plannedReps ?? "-"}${
+                      item.plannedLoad ? ` · ${item.plannedLoad}` : ""
+                    }`}
               </p>
               {mode === "executed" ? (
                 <p className="text-muted-foreground">
-                  Executado: {item.executedSets ?? "-"}x{item.executedReps ?? "-"}
-                  {item.executedLoad ? ` · ${item.executedLoad}` : ""}
+                  {item.isCardio
+                    ? `Executado (cardio): ${item.executedCardioSummary ?? "-"}`
+                    : `Executado: ${item.executedSets ?? "-"}x${item.executedReps ?? "-"}${
+                        item.executedLoad ? ` · ${item.executedLoad}` : ""
+                      }`}
+                </p>
+              ) : null}
+              {mode === "executed" ? (
+                <p className="text-muted-foreground">
+                  Tempo no exercicio: {item.executedDurationMinutes ?? "-"} min
                 </p>
               ) : null}
               <p className={cn("font-semibold", item.completed ? "text-primary" : "text-muted-foreground")}>

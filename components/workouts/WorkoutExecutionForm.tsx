@@ -13,6 +13,7 @@ import {
 } from "@phosphor-icons/react"
 
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -24,6 +25,8 @@ import { WorkoutReceipt } from "@/components/workouts/WorkoutReceipt"
 import { useAuth } from "@/hooks/useAuth"
 import { todayIsoDate } from "@/lib/date"
 import { getWorkoutExecutionStatusLabel } from "@/lib/labels"
+import { extractRepsNumber } from "@/lib/reps"
+import { isCardioExercise, isCardioWorkout } from "@/lib/workoutMode"
 import { uploadWorkoutExecutionPhoto } from "@/services/workoutExecutionService"
 import { cn } from "@/lib/utils"
 import type {
@@ -57,11 +60,13 @@ interface FinishedWorkoutSummary {
   totalExercises: number
   exercises: Array<{
     name: string
+    isCardio?: boolean
     plannedSets: number
-    plannedReps: number
+    plannedReps: string
     setsCompleted: number
     repsCompleted: number
     loadUsed?: string
+    cardioSummary?: string
     startedAt?: string
     finishedAt?: string
     durationMinutes: number
@@ -76,16 +81,20 @@ function nowLocalDateTime() {
 }
 
 function createExecutedExercises(workout: Workout): ExecutedExercise[] {
-  return workout.exercises.map((exercise) => ({
-    exerciseName: exercise.name,
-    setsCompleted: 0,
-    repsCompleted: 0,
-    loadUsed: exercise.suggestedLoad,
-    notes: "",
-    exerciseStartedAt: undefined,
-    exerciseFinishedAt: undefined,
-    completed: false,
-  }))
+  return workout.exercises.map((exercise) => {
+    const cardioExercise = isCardioExercise(exercise, workout.muscleGroup)
+
+    return {
+      exerciseName: exercise.name,
+      setsCompleted: Number.isFinite(exercise.sets) ? exercise.sets : 0,
+      repsCompleted: extractRepsNumber(exercise.reps, 0),
+      loadUsed: cardioExercise ? "" : exercise.suggestedLoad,
+      notes: cardioExercise ? exercise.suggestedLoad ?? "" : "",
+      exerciseStartedAt: undefined,
+      exerciseFinishedAt: undefined,
+      completed: false,
+    }
+  })
 }
 
 function parseDateTime(value?: string): number {
@@ -166,6 +175,18 @@ function toLocalDateTimeInputValue(value?: string): string {
   return new Date(date.getTime() - offset).toISOString().slice(0, 19)
 }
 
+function buildCardioSummary(exercise: ExecutedExercise): string {
+  const blocks = exercise.setsCompleted > 0 ? `${exercise.setsCompleted} blocos` : null
+  const duration = exercise.repsCompleted > 0 ? `${exercise.repsCompleted} min` : null
+  const distanceValue = exercise.loadUsed?.trim()
+  const distance = distanceValue
+    ? /\bkm\b/i.test(distanceValue)
+      ? distanceValue
+      : `${distanceValue} km`
+    : null
+  return [blocks, duration, distance].filter(Boolean).join(" | ") || "-"
+}
+
 export function WorkoutExecutionForm({
   plans,
   workouts,
@@ -213,6 +234,10 @@ export function WorkoutExecutionForm({
   )
 
   const selectedPlan = useMemo(() => plans.find((plan) => plan.id === planId), [plans, planId])
+  const selectedWorkoutIsCardio = useMemo(
+    () => isCardioWorkout(selectedWorkout),
+    [selectedWorkout]
+  )
 
   const completedCount = executedExercises.filter((exercise) => exercise.completed).length
   const totalExercises = executedExercises.length
@@ -348,6 +373,31 @@ export function WorkoutExecutionForm({
     )
   }
 
+  function getLatestFinishedAt(exercises: ExecutedExercise[], skipIndex?: number): string | undefined {
+    let latestAt: string | undefined
+    let latestMs = Number.NEGATIVE_INFINITY
+
+    exercises.forEach((exercise, exerciseIndex) => {
+      if (exerciseIndex === skipIndex || !exercise.exerciseFinishedAt) {
+        return
+      }
+
+      const finishedMs = parseDateTime(exercise.exerciseFinishedAt)
+
+      if (!Number.isNaN(finishedMs) && finishedMs > latestMs) {
+        latestMs = finishedMs
+        latestAt = exercise.exerciseFinishedAt
+      }
+    })
+
+    return latestAt
+  }
+
+  function inferExerciseStartAt(index: number, fallbackNow = nowLocalDateTime()) {
+    const latestFinishedAt = getLatestFinishedAt(executedExercises, index)
+    return latestFinishedAt || startedAt || fallbackNow
+  }
+
   function selectWorkout(nextWorkoutId: string) {
     setWorkoutId(nextWorkoutId)
     const workout = planWorkouts.find((item) => item.id === nextWorkoutId)
@@ -376,10 +426,11 @@ export function WorkoutExecutionForm({
 
   function startExercise(index: number) {
     const now = nowLocalDateTime()
+    const inferredStartAt = inferExerciseStartAt(index, now)
 
     updateExercise(index, (exercise) => ({
       ...exercise,
-      exerciseStartedAt: exercise.exerciseStartedAt ?? now,
+      exerciseStartedAt: exercise.exerciseStartedAt ?? inferredStartAt,
       exerciseFinishedAt: exercise.completed ? undefined : exercise.exerciseFinishedAt,
       completed: false,
     }))
@@ -387,13 +438,14 @@ export function WorkoutExecutionForm({
 
   function toggleExerciseCompleted(index: number) {
     const now = nowLocalDateTime()
+    const inferredStartAt = inferExerciseStartAt(index, now)
 
     updateExercise(index, (exercise) => {
       if (!exercise.completed) {
         return {
           ...exercise,
           completed: true,
-          exerciseStartedAt: exercise.exerciseStartedAt ?? now,
+          exerciseStartedAt: exercise.exerciseStartedAt ?? inferredStartAt,
           exerciseFinishedAt: now,
         }
       }
@@ -443,7 +495,7 @@ export function WorkoutExecutionForm({
       ...exercise,
       completed: true,
       setsCompleted: selectedWorkout.exercises[index]?.sets ?? 0,
-      repsCompleted: selectedWorkout.exercises[index]?.reps ?? 0,
+      repsCompleted: extractRepsNumber(selectedWorkout.exercises[index]?.reps, 0),
       exerciseStartedAt: now,
       exerciseFinishedAt: now,
     }))
@@ -480,12 +532,14 @@ export function WorkoutExecutionForm({
       completedCount: completedExercises.length,
       totalExercises: completedExercises.length,
       exercises: completedExercises.map((exercise, index) => ({
+        isCardio: isCardioExercise(selectedWorkout.exercises[index], selectedWorkout.muscleGroup),
         name: exercise.exerciseName,
         plannedSets: selectedWorkout.exercises[index]?.sets ?? 0,
-        plannedReps: selectedWorkout.exercises[index]?.reps ?? 0,
+        plannedReps: selectedWorkout.exercises[index]?.reps ?? "0",
         setsCompleted: exercise.setsCompleted,
         repsCompleted: exercise.repsCompleted,
         loadUsed: exercise.loadUsed,
+        cardioSummary: buildCardioSummary(exercise),
         startedAt: exercise.exerciseStartedAt,
         finishedAt: exercise.exerciseFinishedAt,
         durationMinutes: 1,
@@ -539,12 +593,14 @@ export function WorkoutExecutionForm({
           : Math.max(1, Math.round((exerciseEndMs - exerciseStartMs) / 60000))
 
       return {
+        isCardio: isCardioExercise(planned, selectedWorkout.muscleGroup),
         name: exercise.exerciseName,
         plannedSets: planned?.sets ?? 0,
-        plannedReps: planned?.reps ?? 0,
+        plannedReps: planned?.reps ?? "0",
         setsCompleted: exercise.setsCompleted,
         repsCompleted: exercise.repsCompleted,
         loadUsed: exercise.loadUsed,
+        cardioSummary: buildCardioSummary(exercise),
         startedAt: exercise.exerciseStartedAt,
         finishedAt: exercise.exerciseFinishedAt,
         durationMinutes,
@@ -628,8 +684,31 @@ export function WorkoutExecutionForm({
         </div>
       ) : null}
 
-      <div className={cn("rounded-xl border border-border/70 bg-muted/30 p-3", immersive && "rounded-lg border-border/50 bg-muted/20")}>
-        <p className="text-xs text-muted-foreground">Status</p>
+      <div
+        className={cn(
+          "rounded-xl border p-3",
+          immersive && "rounded-lg",
+          selectedWorkoutIsCardio
+            ? "border-cyan-300/70 bg-cyan-50/60"
+            : "border-amber-300/70 bg-amber-50/55"
+        )}
+      >
+        <div className="mb-1 flex items-center justify-between gap-2">
+          <p className="text-xs text-muted-foreground">Status</p>
+          <Badge variant={selectedWorkoutIsCardio ? "default" : "secondary"} className="text-[10px] uppercase tracking-wide">
+            {selectedWorkoutIsCardio ? (
+              <>
+                <ClockCountdown className="mr-1 size-3" />
+                Cardio
+              </>
+            ) : (
+              <>
+                <CheckCircle className="mr-1 size-3" />
+                Forca
+              </>
+            )}
+          </Badge>
+        </div>
         <p className="text-sm font-medium">{getWorkoutExecutionStatusLabel(status)}</p>
         {startedAt ? <p className="mt-1 text-xs text-muted-foreground">Inicio: {formatDateTime(startedAt)}</p> : null}
         {isInProgress ? (
@@ -685,6 +764,7 @@ export function WorkoutExecutionForm({
           <div className="space-y-2">
             {executedExercises.map((exercise, index) => {
               const plannedExercise = selectedWorkout.exercises[index]
+              const cardioExercise = isCardioExercise(plannedExercise, selectedWorkout.muscleGroup)
 
               return (
                 <div
@@ -692,6 +772,8 @@ export function WorkoutExecutionForm({
                   className={cn(
                     "rounded-xl border border-border/70 bg-card p-3 transition-colors",
                     immersive && "shadow-none",
+                    cardioExercise && "border-cyan-300/70 bg-cyan-50/50",
+                    !cardioExercise && "border-amber-300/65 bg-amber-50/40",
                     exercise.completed && "border-primary/30 bg-primary/5",
                     exercise.exerciseStartedAt &&
                       !exercise.completed &&
@@ -701,18 +783,38 @@ export function WorkoutExecutionForm({
                   <div className="space-y-3">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                       <div>
-                        <p
-                          className={cn(
-                            "text-sm font-medium",
-                            exercise.completed && "text-muted-foreground line-through"
-                          )}
-                        >
-                          {exercise.exerciseName}
-                        </p>
+                        <div className="flex items-center gap-2">
+                          <p
+                            className={cn(
+                              "text-sm font-medium",
+                              exercise.completed && "text-muted-foreground line-through"
+                            )}
+                          >
+                            {exercise.exerciseName}
+                          </p>
+                          <Badge
+                            variant={cardioExercise ? "default" : "secondary"}
+                            className="h-5 px-2 text-[10px] uppercase tracking-wide"
+                          >
+                            {cardioExercise ? "Cardio" : "Forca"}
+                          </Badge>
+                        </div>
                         <p className="text-xs text-muted-foreground">
-                          {plannedExercise?.muscleGroup} | {plannedExercise?.sets ?? 0}x{plannedExercise?.reps ?? 0}
-                          {plannedExercise?.suggestedLoad ? ` | ${plannedExercise.suggestedLoad}` : ""}
+                          {cardioExercise
+                            ? `${plannedExercise?.muscleGroup || "Cardio"}${
+                                plannedExercise?.suggestedLoad
+                                  ? ` | Ritmo: ${plannedExercise.suggestedLoad}`
+                                  : ""
+                              }`
+                            : `${plannedExercise?.muscleGroup} | ${plannedExercise?.sets ?? 0}x${plannedExercise?.reps ?? 0}${
+                                plannedExercise?.suggestedLoad
+                                  ? ` | ${plannedExercise.suggestedLoad}`
+                                  : ""
+                              }`}
                         </p>
+                        {cardioExercise && plannedExercise?.notes ? (
+                          <p className="mt-1 text-xs text-muted-foreground">Plano: {plannedExercise.notes}</p>
+                        ) : null}
                       </div>
                       <div className="grid w-full grid-cols-1 gap-1 sm:flex sm:w-auto sm:items-center">
                         <Button
@@ -750,37 +852,43 @@ export function WorkoutExecutionForm({
                       <Input
                         type="number"
                         min={0}
-                        placeholder="Series"
+                        placeholder={cardioExercise ? "Blocos" : "Series"}
                         value={exercise.setsCompleted}
                         onChange={(event) =>
                           updateExercise(index, (item) => ({
                             ...item,
                             setsCompleted: Number(event.target.value),
-                            exerciseStartedAt: item.exerciseStartedAt ?? nowLocalDateTime(),
+                            exerciseStartedAt:
+                              item.exerciseStartedAt ?? inferExerciseStartAt(index, nowLocalDateTime()),
                           }))
                         }
                       />
                       <Input
                         type="number"
                         min={0}
-                        placeholder="Reps"
+                        placeholder={cardioExercise ? "Tempo (min)" : "Reps"}
                         value={exercise.repsCompleted}
                         onChange={(event) =>
                           updateExercise(index, (item) => ({
                             ...item,
                             repsCompleted: Number(event.target.value),
-                            exerciseStartedAt: item.exerciseStartedAt ?? nowLocalDateTime(),
+                            exerciseStartedAt:
+                              item.exerciseStartedAt ?? inferExerciseStartAt(index, nowLocalDateTime()),
                           }))
                         }
                       />
                       <Input
-                        placeholder="Carga"
+                        type={cardioExercise ? "number" : "text"}
+                        min={cardioExercise ? 0 : undefined}
+                        step={cardioExercise ? "0.1" : undefined}
+                        placeholder={cardioExercise ? "Distancia (km)" : "Carga"}
                         value={exercise.loadUsed ?? ""}
                         onChange={(event) =>
                           updateExercise(index, (item) => ({
                             ...item,
                             loadUsed: event.target.value,
-                            exerciseStartedAt: item.exerciseStartedAt ?? nowLocalDateTime(),
+                            exerciseStartedAt:
+                              item.exerciseStartedAt ?? inferExerciseStartAt(index, nowLocalDateTime()),
                           }))
                         }
                       />
@@ -788,13 +896,14 @@ export function WorkoutExecutionForm({
 
                     {!immersive ? (
                       <Textarea
-                        placeholder="Observacao opcional"
+                        placeholder={cardioExercise ? "Ritmo/Zona e observacoes opcionais" : "Observacao opcional"}
                         value={exercise.notes ?? ""}
                         onChange={(event) =>
                           updateExercise(index, (item) => ({
                             ...item,
                             notes: event.target.value,
-                            exerciseStartedAt: item.exerciseStartedAt ?? nowLocalDateTime(),
+                            exerciseStartedAt:
+                              item.exerciseStartedAt ?? inferExerciseStartAt(index, nowLocalDateTime()),
                           }))
                         }
                       />
@@ -973,7 +1082,9 @@ export function WorkoutExecutionForm({
                         <span className="text-xs text-muted-foreground">{exercise.durationMinutes} min</span>
                       </div>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        Planejado: {exercise.plannedSets}x{exercise.plannedReps} | Feito: {exercise.setsCompleted}x{exercise.repsCompleted}
+                        {exercise.isCardio
+                          ? `Cardio: ${exercise.cardioSummary ?? "-"}`
+                          : `Planejado: ${exercise.plannedSets}x${exercise.plannedReps} | Feito: ${exercise.setsCompleted}x${exercise.repsCompleted}`}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         Carga: {exercise.loadUsed || "-"} | Inicio: {formatClock(exercise.startedAt)} | Fim: {formatClock(exercise.finishedAt)}

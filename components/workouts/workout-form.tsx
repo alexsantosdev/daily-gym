@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { getWeekdayLabel } from "@/lib/date"
+import { normalizeRepsValue } from "@/lib/reps"
 import type { Workout, WorkoutExercise, WorkoutPlan } from "@/types/workout"
 
 interface WorkoutFormValues {
@@ -43,25 +44,123 @@ function serializeExercises(exercises: WorkoutExercise[]) {
     .join("\n")
 }
 
-function parseExercises(exercisesText: string): WorkoutExercise[] {
-  return exercisesText
+function parsePositiveNumber(value?: string, fallback = 0) {
+  if (!value) {
+    return fallback
+  }
+
+  const normalized = value.replace(",", ".").trim()
+  const direct = Number(normalized)
+
+  if (Number.isFinite(direct)) {
+    return direct
+  }
+
+  // Support formats like "8-10", "10 a 12" and "12+" by using the first number.
+  const matched = normalized.match(/\d+(\.\d+)?/)
+  if (!matched) {
+    return fallback
+  }
+
+  const parsed = Number(matched[0])
+  return Number.isFinite(parsed) ? parsed : fallback
+}
+
+function parsePipeExerciseLine(line: string): WorkoutExercise | null {
+  if (!line.includes("|")) {
+    return null
+  }
+
+  const [name, muscleGroup, sets, reps, suggestedLoad, notes] = line
+    .split("|")
+    .map((part) => part.trim())
+
+  if (!name) {
+    return null
+  }
+
+  return {
+    name,
+    muscleGroup: muscleGroup || "Geral",
+    sets: parsePositiveNumber(sets, 0),
+    reps: normalizeRepsValue(reps, "0"),
+    suggestedLoad: suggestedLoad || undefined,
+    notes: notes || undefined,
+  }
+}
+
+function parseCardioBlock(exercisesText: string): WorkoutExercise[] {
+  const lines = exercisesText
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean)
-    .map((line) => {
-      const [name, muscleGroup, sets, reps, suggestedLoad, notes] = line
-        .split("|")
-        .map((part) => part.trim())
 
-      return {
-        name,
-        muscleGroup,
-        sets: Number(sets || 0),
-        reps: Number(reps || 0),
-        suggestedLoad: suggestedLoad || undefined,
-        notes: notes || undefined,
-      }
-    })
+  if (lines.length === 0) {
+    return []
+  }
+
+  const titleLine = lines[0] ?? ""
+  const objectiveLine = lines.find((line) => /^objetivo\s*:/i.test(line))
+  const structureStart = lines.findIndex((line) => /^estrutura\s*:/i.test(line))
+  const progressionStart = lines.findIndex((line) =>
+    /^(?:[^\p{L}\p{N}]*)?progress[aã]o\s*:/iu.test(line)
+  )
+  const distanceLine = lines.find((line) => /\b\d+(?:[.,]\d+)?\s*km\b/i.test(line))
+  const rhythmLine = lines.find((line) => /(ritmo|zona\s*\d|pace)/i.test(line))
+
+  const structureEnd =
+    progressionStart > structureStart && structureStart >= 0 ? progressionStart : lines.length
+  const structureLines =
+    structureStart >= 0
+      ? lines
+          .slice(structureStart + 1, structureEnd)
+          .filter((line) => !/^(?:[^\p{L}\p{N}]*)?progress[aã]o\s*:/iu.test(line))
+      : []
+
+  const progressionLines =
+    progressionStart >= 0
+      ? lines.slice(progressionStart + 1).filter((line) => !/^estrutura\s*:/i.test(line))
+      : []
+
+  const normalizedName = titleLine
+    .replace(/^treino\s*\d*\s*[–-]\s*/i, "")
+    .trim()
+
+  const objectiveText = objectiveLine?.replace(/^objetivo\s*:\s*/i, "").trim()
+  const structureText = structureLines.join(" | ")
+  const progressionText = progressionLines.join(" | ")
+
+  const notes = [objectiveText, distanceLine, structureText, progressionText]
+    .filter((value) => Boolean(value && value.trim()))
+    .join(" | ")
+
+  return [
+    {
+      name: normalizedName || "Corrida",
+      muscleGroup: "Cardio",
+      sets: 1,
+      reps: "1",
+      suggestedLoad: rhythmLine || undefined,
+      notes: notes || undefined,
+    },
+  ]
+}
+
+function parseExercises(exercisesText: string): WorkoutExercise[] {
+  const rows = exercisesText
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+
+  const parsedPipeRows = rows
+    .map((line) => parsePipeExerciseLine(line))
+    .filter((item): item is WorkoutExercise => Boolean(item))
+
+  if (parsedPipeRows.length > 0) {
+    return parsedPipeRows
+  }
+
+  return parseCardioBlock(exercisesText)
 }
 
 function toFormValues(workout: Workout): WorkoutFormValues {
@@ -227,7 +326,9 @@ export function WorkoutForm({
           required
         />
         <p className="text-xs text-muted-foreground">
-          Formato: nome|grupo muscular|series|repeticoes|carga sugerida|observacoes
+          Formato 1: nome|grupo muscular|series|repeticoes|carga sugerida|observacoes.
+          Repeticoes aceitam faixa (ex.: 8-10).
+          Formato 2 (cardio/hibrido): bloco com titulo + Objetivo + Estrutura + Progressao.
         </p>
       </div>
 

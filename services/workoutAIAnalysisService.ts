@@ -4,6 +4,7 @@
 } from "@/lib/aiPrompts"
 import { minutesBetween } from "@/lib/date"
 import { getWorkoutPlanGoalLabel } from "@/lib/labels"
+import { extractRepsNumber } from "@/lib/reps"
 import { estimateWorkoutCalories } from "@/lib/workoutCalories"
 import type {
   WorkoutIntensityLabel,
@@ -67,7 +68,10 @@ function buildExerciseStats(payload: WorkoutShareAnalysisPayload) {
   }, 0)
 
   const totalReps = executedExercises.reduce((acc, item, index) => {
-    const reps = item.repsCompleted > 0 ? item.repsCompleted : (plannedExercises[index]?.reps ?? 0)
+    const reps =
+      item.repsCompleted > 0
+        ? item.repsCompleted
+        : extractRepsNumber(plannedExercises[index]?.reps, 0)
     return acc + reps
   }, 0)
 

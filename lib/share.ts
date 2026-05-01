@@ -2,6 +2,7 @@
 
 import { formatDatePtBr, minutesBetween, todayIsoDate } from "@/lib/date"
 import { getWorkoutPlanGoalLabel } from "@/lib/labels"
+import { extractRepsNumber } from "@/lib/reps"
 import { estimateWorkoutCalories } from "@/lib/workoutCalories"
 import type { ShareCardData, ShareCardType } from "@/types/share"
 import type { StreakSummary } from "@/types/streak"
@@ -167,7 +168,7 @@ function buildWorkoutExecutionStats(execution: WorkoutExecution, workout?: Worko
   }, 0)
 
   const totalReps = execution.executedExercises.reduce((acc, item, index) => {
-    const plannedReps = workout?.exercises[index]?.reps ?? 0
+    const plannedReps = extractRepsNumber(workout?.exercises[index]?.reps, 0)
     return acc + (item.repsCompleted > 0 ? item.repsCompleted : plannedReps)
   }, 0)
 

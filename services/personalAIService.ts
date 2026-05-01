@@ -263,15 +263,6 @@ async function getRecommendationById(recommendationId: string): Promise<AIRecomm
   return mapAIRecommendation(snapshot.id, snapshot.data() as Partial<AIRecommendation>)
 }
 
-function toSetsAndReps(repsValue: string) {
-  const parsed = repsValue.match(/\d+/)
-  const parsedReps = parsed ? Number(parsed[0]) : 10
-
-  return {
-    reps: Number.isFinite(parsedReps) ? parsedReps : 10,
-  }
-}
-
 export async function applyWorkoutPlanRecommendation(recommendationId: string): Promise<void> {
   const recommendation = await getRecommendationById(recommendationId)
 
@@ -303,12 +294,11 @@ export async function applyWorkoutPlanRecommendation(recommendationId: string): 
         weekday: workout.weekday,
         order: index,
         exercises: workout.exercises.map((exercise) => {
-          const { reps } = toSetsAndReps(exercise.reps)
           return {
             name: exercise.name,
             muscleGroup: exercise.muscleGroup,
             sets: exercise.sets,
-            reps,
+            reps: exercise.reps,
             suggestedLoad: exercise.suggestedLoad,
             plannedRestSeconds: exercise.restSeconds,
             notes: exercise.notes,

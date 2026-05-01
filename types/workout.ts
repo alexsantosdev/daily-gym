@@ -28,7 +28,7 @@ export interface WorkoutExercise {
   name: string
   muscleGroup: string
   sets: number
-  reps: number
+  reps: string
   suggestedLoad?: string
   plannedRestSeconds?: number
   notes?: string
