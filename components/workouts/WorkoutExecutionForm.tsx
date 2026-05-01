@@ -1,7 +1,7 @@
 "use client"
 
 import Image from "next/image"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 
 import {
   CheckCircle,
@@ -222,6 +222,7 @@ export function WorkoutExecutionForm({
   const [summary, setSummary] = useState<FinishedWorkoutSummary | null>(null)
   const [showReceipt, setShowReceipt] = useState(true)
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false)
+  const appliedInitialWorkoutIdRef = useRef<string | null>(null)
 
   const planWorkouts = useMemo(
     () => workouts.filter((workout) => workout.planId === planId),
@@ -304,12 +305,17 @@ export function WorkoutExecutionForm({
   }, [initialPlanId, plans])
 
   useEffect(() => {
-    if (initialWorkoutId) {
+    if (initialWorkoutId && appliedInitialWorkoutIdRef.current !== initialWorkoutId) {
       setWorkoutId(initialWorkoutId)
       const initialWorkout = workouts.find((workout) => workout.id === initialWorkoutId)
       if (initialWorkout) {
         setExecutedExercises(createExecutedExercises(initialWorkout))
       }
+      appliedInitialWorkoutIdRef.current = initialWorkoutId
+      return
+    }
+
+    if (initialWorkoutId) {
       return
     }
 
