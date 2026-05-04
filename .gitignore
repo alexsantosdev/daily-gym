@@ -1,3 +1,15 @@
+.codex/
+.agents/
+.rtk-home/
+.caveman/
+.claude/
+.gemini/
+.cursor/
+.windsurf/
+.vscode/
+.idea/
+.pytest_cache/
+
 # Logs
 logs
 *.log
