@@ -1,6 +1,6 @@
 ﻿import Link from "next/link"
 
-import { Barbell, ChartBar, ForkKnife, ListChecks, PersonSimpleWalk } from "@phosphor-icons/react"
+import { Barbell, ChartBar, Drop, ForkKnife, ListChecks, PersonSimpleWalk } from "@phosphor-icons/react"
 
 import { Button } from "@/components/ui/button"
 
@@ -8,6 +8,7 @@ const iconByAction = {
   meal: ForkKnife,
   workout: Barbell,
   activity: PersonSimpleWalk,
+  water: Drop,
   plans: ListChecks,
   reports: ChartBar,
 } as const
@@ -17,6 +18,7 @@ export function QuickActions() {
     { id: "meal", href: "/meals?quick=1", label: "Nova refeicao" },
     { id: "workout", href: "/workouts?start=1", label: "Iniciar treino" },
     { id: "activity", href: "/activities?quick=1", label: "Nova atividade" },
+    { id: "water", href: "/water", label: "Registrar agua" },
     { id: "plans", href: "/workouts?tab=plans", label: "Gerenciar planos" },
     { id: "reports", href: "/reports", label: "Ver relatorios" },
   ] as const

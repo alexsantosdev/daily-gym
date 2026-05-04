@@ -7,11 +7,10 @@ import { usePathname } from "next/navigation"
 import {
   Barbell,
   CalendarBlank,
-  CalendarPlus,
   CaretDown,
   ChartBar,
+  Drop,
   ForkKnife,
-  House,
   Moon,
   SignOut,
   Sparkle,
@@ -27,23 +26,17 @@ import { ProfileLifecycleManager } from "@/components/profile/ProfileLifecycleMa
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/hooks/useAuth"
+import { DESKTOP_NAV_ITEMS, MOBILE_NAV_ITEMS } from "@/lib/navigation"
 
-const NAV_ITEMS = [
-  { href: "/dashboard", label: "Dashboard", icon: House },
-  { href: "/workouts", label: "Treinos", icon: Barbell },
-  { href: "/calendar", label: "Calendario", icon: CalendarBlank },
-  { href: "/meals", label: "Refeicoes", icon: ForkKnife },
-  { href: "/reports", label: "Relatorios", icon: ChartBar },
-]
-
-const SECONDARY_NAV_ITEMS = [
-  { href: "/planning", label: "Planejamento", icon: CalendarPlus },
-  { href: "/groups", label: "Competicao", icon: Trophy },
-  { href: "/personal-ai", label: "Personal IA", icon: Sparkle },
-]
-
-const DESKTOP_NAV_ITEMS = [...NAV_ITEMS, ...SECONDARY_NAV_ITEMS]
-const MOBILE_NAV_ITEMS = NAV_ITEMS.slice(0, 5)
+const iconByNavItem = {
+  calendar: CalendarBlank,
+  workouts: Barbell,
+  meals: ForkKnife,
+  reports: ChartBar,
+  groups: Trophy,
+  water: Drop,
+  "personal-ai": Sparkle,
+} as const
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
@@ -51,6 +44,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { resolvedTheme, setTheme } = useTheme()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement | null>(null)
+  const mobileNavItems = MOBILE_NAV_ITEMS.map((item) => ({
+    ...item,
+    icon: iconByNavItem[item.icon],
+  }))
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -74,8 +71,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <header className="sticky top-0 z-30 border-b border-border/60 bg-background/90 backdrop-blur-xl">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-3 py-2.5 sm:px-4 md:py-3">
           <div className="flex flex-col gap-0.5">
-            <p className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">daily-gym</p>
-            <h1 className="text-sm font-medium md:text-base">Resumo</h1>
+            <p className="text-[10px] tracking-[0.24em] text-muted-foreground uppercase">
+              daily-gym
+            </p>
+            <h1 className="text-sm font-medium md:text-base">Calendario</h1>
           </div>
 
           <div className="flex items-center gap-1.5">
@@ -88,14 +87,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               >
                 <User className="size-4" />
                 <span className="truncate text-xs">{displayName}</span>
-                <CaretDown className={cn("size-4 transition-transform", isMenuOpen && "rotate-180")} />
+                <CaretDown
+                  className={cn(
+                    "size-4 transition-transform",
+                    isMenuOpen && "rotate-180"
+                  )}
+                />
               </Button>
 
               {isMenuOpen ? (
-                <div className="absolute right-0 top-11 z-50 w-52 rounded-xl border border-border/70 bg-card p-1.5 shadow-sm">
+                <div className="absolute top-11 right-0 z-50 w-52 rounded-xl border border-border/70 bg-card p-1.5 shadow-sm">
                   <div className="rounded-lg px-2 py-2 text-xs text-muted-foreground">
                     Conectado como
-                    <p className="mt-1 truncate font-medium text-foreground">{displayName}</p>
+                    <p className="mt-1 truncate font-medium text-foreground">
+                      {displayName}
+                    </p>
                   </div>
                   <Link
                     href="/personal-ai"
@@ -106,20 +112,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     Personal IA
                   </Link>
                   <Link
-                    href="/planning"
-                    className="inline-flex w-full items-center gap-2 rounded-lg px-2 py-2 text-sm text-foreground hover:bg-muted/60 md:hidden"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    <CalendarPlus className="size-4" />
-                    Planejamento
-                  </Link>
-                  <Link
                     href="/groups"
                     className="inline-flex w-full items-center gap-2 rounded-lg px-2 py-2 text-sm text-foreground hover:bg-muted/60 md:hidden"
                     onClick={() => setIsMenuOpen(false)}
                   >
                     <Trophy className="size-4" />
                     Competicao
+                  </Link>
+                  <Link
+                    href="/water"
+                    className="inline-flex w-full items-center gap-2 rounded-lg px-2 py-2 text-sm text-foreground hover:bg-muted/60 md:hidden"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <Drop className="size-4" />
+                    Hidratacao
                   </Link>
                   <Link
                     href="/profile"
@@ -137,7 +143,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       setTheme(resolvedTheme === "dark" ? "light" : "dark")
                     }}
                   >
-                    {resolvedTheme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
+                    {resolvedTheme === "dark" ? (
+                      <Sun className="size-4" />
+                    ) : (
+                      <Moon className="size-4" />
+                    )}
                     Alternar tema
                   </button>
                   <button
@@ -160,14 +170,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="mx-auto hidden w-full max-w-6xl gap-1.5 overflow-x-auto px-3 pb-2.5 sm:px-4 md:flex">
           {DESKTOP_NAV_ITEMS.map((item) => {
             const isActive = pathname === item.href
-            const Icon = item.icon
+            const Icon = iconByNavItem[item.icon]
 
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors",
+                  "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium whitespace-nowrap transition-colors",
                   isActive
                     ? "border-border bg-secondary text-secondary-foreground"
                     : "border-border/60 bg-background text-muted-foreground hover:bg-muted/40 hover:text-foreground"
@@ -181,12 +191,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-6xl px-3 pb-[calc(7.25rem+env(safe-area-inset-bottom))] pt-4 sm:px-4 md:pb-8 md:pt-5">
+      <main className="mx-auto w-full max-w-6xl px-3 pt-4 pb-[calc(7.25rem+env(safe-area-inset-bottom))] sm:px-4 md:pt-5 md:pb-8">
         {children}
       </main>
 
       <FloatingActionMenu />
-      <MobileBottomNav items={MOBILE_NAV_ITEMS} pathname={pathname} />
+      <MobileBottomNav items={mobileNavItems} pathname={pathname} />
       <ProfileLifecycleManager />
     </div>
   )
