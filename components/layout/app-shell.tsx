@@ -64,6 +64,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("mousedown", handleClickOutside)
   }, [])
 
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) {
+      return
+    }
+
+    void navigator.serviceWorker.register("/service-worker.js").catch(() => {
+      // Non-blocking: app keeps working without service worker.
+    })
+  }, [])
+
   const displayName = user?.displayName || user?.email || "Conta"
 
   return (

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 
-import { CaretDown, ClockCountdown, Receipt, Trash } from "@phosphor-icons/react"
+import { CaretDown, ClockCountdown, PencilSimpleLine, Receipt, Trash } from "@phosphor-icons/react"
 
 import { ShareButton } from "@/components/share/ShareButton"
 import { WorkoutReceipt } from "@/components/workouts/WorkoutReceipt"
@@ -19,6 +19,7 @@ export function WorkoutHistoryList({
   planNameById,
   workoutsById,
   plansById,
+  onEdit,
   onDelete,
   initialOpenedExecutionId,
   userName = "Atleta",
@@ -28,6 +29,7 @@ export function WorkoutHistoryList({
   planNameById: Record<string, string>
   workoutsById: Record<string, Workout>
   plansById: Record<string, WorkoutPlan>
+  onEdit: (execution: WorkoutExecution) => void
   onDelete: (executionId: string) => void
   initialOpenedExecutionId?: string
   userName?: string
@@ -94,6 +96,18 @@ export function WorkoutHistoryList({
                   Duracao: {execution.durationMinutes ?? 0} min
                 </span>
                 <div className="flex flex-col gap-2 min-[430px]:flex-row min-[430px]:items-center">
+                  <Button
+                    size="xs"
+                    className="h-8 w-full min-[430px]:w-auto"
+                    variant="outline"
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      onEdit(execution)
+                    }}
+                  >
+                    <PencilSimpleLine data-icon="inline-start" />
+                    Editar
+                  </Button>
                   <Button size="xs" className="h-8 w-full min-[430px]:w-auto" variant="outline" onClick={() => setOpenedExecutionId(execution.id)}>
                     <Receipt data-icon="inline-start" />
                     Comprovante

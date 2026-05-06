@@ -4,8 +4,8 @@ import { parseIsoDateLocal } from "@/lib/date"
 export const GROUP_POINTS: Record<GroupActivityType, number> = {
   workout_completed: 100,
   workout_photo: 30,
-  activity_completed: 40,
-  activity_photo: 20,
+  activity_completed: 100,
+  activity_photo: 30,
   workout_checkin: 10,
   meal_photo: 5,
   manual: 0,
@@ -103,7 +103,7 @@ export function calculateGroupScore(
     const weeklyCompletionRate =
       workoutsCompleted + activitiesCompleted === 0
         ? 0
-        : Math.min(100, workoutsCompleted * 20 + activitiesCompleted * 10)
+        : Math.min(100, workoutsCompleted * 20 + activitiesCompleted * 20)
 
     return {
       memberId: member.userId,

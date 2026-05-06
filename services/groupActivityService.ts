@@ -1,11 +1,13 @@
 import {
   addDoc,
   collection,
+  doc,
   getDocs,
   limit,
   orderBy,
   query,
   type QueryConstraint,
+  updateDoc,
   where,
 } from "firebase/firestore"
 
@@ -54,6 +56,51 @@ function mapActivity(id: string, groupId: string, data: Partial<GroupActivity>):
 function getGroupActivitiesCollection(groupId: string) {
   const { db } = assertFirebaseConfigured()
   return collection(db, "groups", groupId, "activities")
+}
+
+async function getGroupActivitiesByWorkoutExecutionId(groupId: string, workoutExecutionId: string) {
+  const activitiesQuery = query(
+    getGroupActivitiesCollection(groupId),
+    where("workoutExecutionId", "==", workoutExecutionId),
+    limit(50)
+  )
+
+  const snapshot = await getDocs(activitiesQuery)
+  return snapshot.docs.map((activityDoc) =>
+    mapActivity(activityDoc.id, groupId, activityDoc.data() as Partial<GroupActivity>)
+  )
+}
+
+async function upsertGroupActivityByExecutionType(
+  groupId: string,
+  existingActivities: GroupActivity[],
+  input: Omit<CreateGroupActivityInput, "groupId">
+) {
+  const existing = existingActivities.find((activity) => activity.type === input.type)
+  if (!existing) {
+    await createGroupActivity({
+      groupId,
+      ...input,
+    })
+    return
+  }
+
+  await updateDoc(
+    doc(assertFirebaseConfigured().db, "groups", groupId, "activities", existing.id),
+    stripUndefinedDeep({
+      userId: input.userId,
+      userName: input.userName,
+      userPhotoURL: input.userPhotoURL,
+      type: input.type,
+      date: input.date,
+      title: input.title,
+      description: input.description,
+      photoUrl: input.photoUrl,
+      workoutExecutionId: input.workoutExecutionId,
+      mealId: input.mealId,
+      points: input.points,
+    })
+  )
 }
 
 interface ActivityPeriod {
@@ -129,17 +176,21 @@ export async function syncWorkoutExecutionToGroups(input: SyncWorkoutExecutionIn
       groups
         .filter((group) => group.status === "active")
         .map(async (group) => {
+          const existingActivities = await getGroupActivitiesByWorkoutExecutionId(group.id, input.execution.id)
+          const basePayload = {
+            userId: input.userId,
+            userName: input.userName?.trim() || "Atleta",
+            userPhotoURL: input.userPhotoURL,
+            date: input.execution.date,
+            workoutExecutionId: input.execution.id,
+          } satisfies Omit<CreateGroupActivityInput, "groupId" | "type" | "title" | "points">
+
           if (isCheckin) {
-            await createGroupActivity({
-              groupId: group.id,
-              userId: input.userId,
-              userName: input.userName?.trim() || "Atleta",
-              userPhotoURL: input.userPhotoURL,
+            await upsertGroupActivityByExecutionType(group.id, existingActivities, {
+              ...basePayload,
               type: "workout_checkin",
-              date: input.execution.date,
               title: "Fez check-in de treino",
               description: input.workout?.name ?? input.plan?.name ?? "Treino iniciado",
-              workoutExecutionId: input.execution.id,
               points: getPointsByActivityType("workout_checkin"),
             })
           }
@@ -150,32 +201,22 @@ export async function syncWorkoutExecutionToGroups(input: SyncWorkoutExecutionIn
                 ? getPointsByActivityType("workout_completed")
                 : Math.round(getPointsByActivityType("workout_completed") / 2)
 
-            await createGroupActivity({
-              groupId: group.id,
-              userId: input.userId,
-              userName: input.userName?.trim() || "Atleta",
-              userPhotoURL: input.userPhotoURL,
+            await upsertGroupActivityByExecutionType(group.id, existingActivities, {
+              ...basePayload,
               type: "workout_completed",
-              date: input.execution.date,
               title: status === "executed" ? "Concluiu treino" : "Concluiu treino parcial",
               description: input.workout?.name ?? input.plan?.name ?? "Treino",
-              workoutExecutionId: input.execution.id,
               points,
             })
           }
 
           if (input.execution.photoUrl) {
-            await createGroupActivity({
-              groupId: group.id,
-              userId: input.userId,
-              userName: input.userName?.trim() || "Atleta",
-              userPhotoURL: input.userPhotoURL,
+            await upsertGroupActivityByExecutionType(group.id, existingActivities, {
+              ...basePayload,
               type: "workout_photo",
-              date: input.execution.date,
               title: "Compartilhou foto do treino",
               description: input.workout?.name ?? "Treino",
               photoUrl: input.execution.photoUrl,
-              workoutExecutionId: input.execution.id,
               points: getPointsByActivityType("workout_photo"),
             })
           }

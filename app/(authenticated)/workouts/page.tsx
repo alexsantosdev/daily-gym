@@ -9,6 +9,10 @@ import { ActivityHistoryList } from "@/components/activities/ActivityHistoryList
 import { ActivityForm, type ActivityFormValues } from "@/components/activities/ActivityForm"
 import { PageHeader } from "@/components/layout/page-header"
 import { WorkoutExecutionForm } from "@/components/workouts/WorkoutExecutionForm"
+import {
+  WorkoutExecutionHistoryForm,
+  type WorkoutExecutionHistoryFormValues,
+} from "@/components/workouts/WorkoutExecutionHistoryForm"
 import { WorkoutExecutionSheet } from "@/components/workouts/WorkoutExecutionSheet"
 import { WorkoutForm } from "@/components/workouts/workout-form"
 import { WorkoutPlanForm, type WorkoutPlanFormValues } from "@/components/workouts/workout-plan-form"
@@ -27,8 +31,9 @@ import { useWorkouts } from "@/hooks/useWorkouts"
 import { getWorkoutPlanStatusLabel } from "@/lib/labels"
 import { uploadActivityPhoto } from "@/services/activityService"
 import { markPlanningEventCompleted } from "@/services/planningService"
+import { uploadWorkoutExecutionPhoto } from "@/services/workoutExecutionService"
 import type { Activity } from "@/types/activity"
-import type { Workout, WorkoutPlan } from "@/types/workout"
+import type { Workout, WorkoutExecution, WorkoutPlan } from "@/types/workout"
 
 export default function WorkoutsPage() {
   const router = useRouter()
@@ -54,6 +59,7 @@ export default function WorkoutsPage() {
     editWorkoutEntry,
     removeWorkoutEntry,
     createExecutionEntry,
+    editExecutionEntry,
     removeExecutionEntry,
   } = useWorkouts(user?.uid, {
     displayName: user?.displayName,
@@ -82,7 +88,9 @@ export default function WorkoutsPage() {
   const [isSubmittingPlan, setIsSubmittingPlan] = useState(false)
   const [isSubmittingExecution, setIsSubmittingExecution] = useState(false)
   const [isSubmittingActivityHistory, setIsSubmittingActivityHistory] = useState(false)
+  const [isSubmittingExecutionHistory, setIsSubmittingExecutionHistory] = useState(false)
   const [editingActivityHistory, setEditingActivityHistory] = useState<Activity | undefined>()
+  const [editingExecutionHistory, setEditingExecutionHistory] = useState<WorkoutExecution | undefined>()
   const [isExecutionSheetOpen, setIsExecutionSheetOpen] = useState(startMode)
 
   const workoutPlanLookup = useMemo(() => Object.fromEntries(plans.map((plan) => [plan.id, plan.name])), [plans])
@@ -172,6 +180,34 @@ export default function WorkoutsPage() {
       setEditingActivityHistory(undefined)
     } finally {
       setIsSubmittingActivityHistory(false)
+    }
+  }
+
+  async function submitExecutionFromHistory(values: WorkoutExecutionHistoryFormValues) {
+    if (!editingExecutionHistory || !user?.uid) {
+      return
+    }
+
+    setIsSubmittingExecutionHistory(true)
+    try {
+      const photoUrl = values.photoFile
+        ? await uploadWorkoutExecutionPhoto(user.uid, values.photoFile)
+        : editingExecutionHistory.photoUrl
+
+      await editExecutionEntry(editingExecutionHistory.id, {
+        date: values.date,
+        status: values.status,
+        startedAt: values.startedAt,
+        checkinAt: values.checkinAt,
+        finishedAt: values.finishedAt,
+        checkoutAt: values.checkoutAt,
+        notes: values.notes,
+        photoUrl,
+      })
+
+      setEditingExecutionHistory(undefined)
+    } finally {
+      setIsSubmittingExecutionHistory(false)
     }
   }
 
@@ -437,6 +473,22 @@ export default function WorkoutsPage() {
         <TabsContent value="history" className="space-y-3">
           <div className="flex flex-col gap-2">
             <p className="text-sm text-muted-foreground">Toque em um registro para abrir os detalhes da execucao.</p>
+
+            {editingExecutionHistory ? (
+              <Card className="border-border/70">
+                <CardContent className="pt-5">
+                  <WorkoutExecutionHistoryForm
+                    execution={editingExecutionHistory}
+                    workoutName={workoutNameById[editingExecutionHistory.workoutId] ?? "Treino"}
+                    planName={workoutPlanLookup[editingExecutionHistory.planId] ?? "Plano"}
+                    isSubmitting={isSubmittingExecutionHistory}
+                    onSubmit={submitExecutionFromHistory}
+                    onCancel={() => setEditingExecutionHistory(undefined)}
+                  />
+                </CardContent>
+              </Card>
+            ) : null}
+
             <WorkoutHistoryList
               executions={executions}
               workoutNameById={workoutNameById}
@@ -444,6 +496,7 @@ export default function WorkoutsPage() {
               workoutsById={workoutsById}
               plansById={plansById}
               userName={userName}
+              onEdit={setEditingExecutionHistory}
               onDelete={(executionId) => void removeExecutionEntry(executionId)}
               initialOpenedExecutionId={executionIdParam ?? undefined}
             />

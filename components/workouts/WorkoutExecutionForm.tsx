@@ -1,7 +1,7 @@
 "use client"
 
 import Image from "next/image"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import {
   CheckCircle,
@@ -72,6 +72,23 @@ interface FinishedWorkoutSummary {
     durationMinutes: number
     completed: boolean
   }>
+}
+
+interface WorkoutExecutionDraft {
+  version: 1
+  savedAt: string
+  planId: string
+  workoutId: string
+  date: string
+  status: WorkoutExecutionStatus
+  checkinType: NonNullable<CreateWorkoutExecutionInput["checkinType"]>
+  startedAt?: string
+  finishedAt?: string
+  checkinAt?: string
+  checkoutAt?: string
+  notes?: string
+  photoUrl?: string
+  executedExercises: ExecutedExercise[]
 }
 
 function nowLocalDateTime() {
@@ -187,6 +204,14 @@ function buildCardioSummary(exercise: ExecutedExercise): string {
   return [blocks, duration, distance].filter(Boolean).join(" | ") || "-"
 }
 
+function getDraftStorageKey(userId?: string) {
+  if (!userId) {
+    return null
+  }
+
+  return `daily-gym:workout-draft:${userId}`
+}
+
 export function WorkoutExecutionForm({
   plans,
   workouts,
@@ -222,7 +247,13 @@ export function WorkoutExecutionForm({
   const [summary, setSummary] = useState<FinishedWorkoutSummary | null>(null)
   const [showReceipt, setShowReceipt] = useState(true)
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false)
+  const [draftRestoredAt, setDraftRestoredAt] = useState<string | null>(null)
+  const [isRequestingNotificationPermission, setIsRequestingNotificationPermission] = useState(false)
   const appliedInitialWorkoutIdRef = useRef<string | null>(null)
+  const hasHydratedDraftRef = useRef(false)
+  const backgroundNotifiedRef = useRef(false)
+
+  const draftStorageKey = useMemo(() => getDraftStorageKey(user?.uid), [user?.uid])
 
   const planWorkouts = useMemo(
     () => workouts.filter((workout) => workout.planId === planId),
@@ -299,6 +330,80 @@ export function WorkoutExecutionForm({
     return Math.max(0, elapsedNow - start)
   }, [elapsedNow, isInProgress, startedAt])
 
+  const persistExecutionDraft = useCallback(() => {
+    if (!draftStorageKey) {
+      return
+    }
+
+    const hasDraftContent =
+      Boolean(startedAt) ||
+      Boolean(checkinAt) ||
+      Boolean(finishedAt) ||
+      Boolean(checkoutAt) ||
+      Boolean(notes.trim()) ||
+      Boolean(photoUrl) ||
+      executedExercises.some((exercise) => exercise.completed || Boolean(exercise.exerciseStartedAt)) ||
+      status === "in_progress"
+
+    if (!hasDraftContent) {
+      try {
+        localStorage.removeItem(draftStorageKey)
+      } catch {
+        // Non-blocking for environments where storage is unavailable.
+      }
+      return
+    }
+
+    const payload: WorkoutExecutionDraft = {
+      version: 1,
+      savedAt: new Date().toISOString(),
+      planId,
+      workoutId,
+      date,
+      status,
+      checkinType,
+      startedAt: startedAt || undefined,
+      finishedAt: finishedAt || undefined,
+      checkinAt: checkinAt || undefined,
+      checkoutAt: checkoutAt || undefined,
+      notes: notes || undefined,
+      photoUrl: photoUrl || undefined,
+      executedExercises,
+    }
+
+    try {
+      localStorage.setItem(draftStorageKey, JSON.stringify(payload))
+    } catch {
+      // Non-blocking for environments where storage is unavailable.
+    }
+  }, [
+    checkinAt,
+    checkinType,
+    checkoutAt,
+    date,
+    draftStorageKey,
+    executedExercises,
+    finishedAt,
+    notes,
+    photoUrl,
+    planId,
+    startedAt,
+    status,
+    workoutId,
+  ])
+
+  const clearExecutionDraft = useCallback(() => {
+    if (!draftStorageKey) {
+      return
+    }
+
+    try {
+      localStorage.removeItem(draftStorageKey)
+    } catch {
+      // Non-blocking for environments where storage is unavailable.
+    }
+  }, [draftStorageKey])
+
   useEffect(() => {
     const nextPlanId = initialPlanId ?? plans[0]?.id ?? ""
     setPlanId(nextPlanId)
@@ -358,6 +463,120 @@ export function WorkoutExecutionForm({
     }
   }, [photoFile, photoUrl])
 
+  useEffect(() => {
+    if (hasHydratedDraftRef.current || !draftStorageKey || plans.length === 0 || workouts.length === 0) {
+      return
+    }
+
+    hasHydratedDraftRef.current = true
+    let rawDraft: string | null = null
+    try {
+      rawDraft = localStorage.getItem(draftStorageKey)
+    } catch {
+      return
+    }
+    if (!rawDraft) {
+      return
+    }
+
+    try {
+      const parsed = JSON.parse(rawDraft) as WorkoutExecutionDraft
+      if (parsed.version !== 1) {
+        return
+      }
+
+      const workoutExists = workouts.some((workout) => workout.id === parsed.workoutId)
+      const planExists = plans.some((plan) => plan.id === parsed.planId)
+      if (!workoutExists || !planExists) {
+        return
+      }
+
+      setPlanId(parsed.planId)
+      setWorkoutId(parsed.workoutId)
+      setDate(parsed.date)
+      setStatus(parsed.status)
+      setCheckinType(parsed.checkinType)
+      setStartedAt(parsed.startedAt ?? "")
+      setFinishedAt(parsed.finishedAt ?? "")
+      setCheckinAt(parsed.checkinAt ?? "")
+      setCheckoutAt(parsed.checkoutAt ?? "")
+      setNotes(parsed.notes ?? "")
+      setPhotoUrl(parsed.photoUrl ?? "")
+      setExecutedExercises(parsed.executedExercises ?? [])
+      setDraftRestoredAt(parsed.savedAt)
+    } catch {
+      clearExecutionDraft()
+    }
+  }, [clearExecutionDraft, draftStorageKey, plans, workouts])
+
+  useEffect(() => {
+    persistExecutionDraft()
+  }, [persistExecutionDraft])
+
+  useEffect(() => {
+    if (typeof document === "undefined") {
+      return
+    }
+
+    const notifyBackgroundExecution = async () => {
+      if (!isInProgress || !startedAt) {
+        return
+      }
+
+      if (document.visibilityState !== "hidden" || backgroundNotifiedRef.current) {
+        return
+      }
+
+      if (typeof Notification === "undefined" || Notification.permission !== "granted") {
+        return
+      }
+
+      backgroundNotifiedRef.current = true
+
+      const title = "Daily Gym: treino em andamento"
+      const body = "Seu treino segue salvo em background. Pode voltar ao app sem perder o progresso."
+      const options: NotificationOptions = {
+        body,
+        tag: "daily-gym-workout-background",
+      }
+
+      if ("serviceWorker" in navigator) {
+        try {
+          const registration = await navigator.serviceWorker.ready
+          await registration.showNotification(title, options)
+          return
+        } catch {
+          // Falls through to direct notification when service worker fails.
+        }
+      }
+
+      // Browser-level fallback when SW notification is unavailable.
+      void new Notification(title, options)
+    }
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        backgroundNotifiedRef.current = false
+      }
+      persistExecutionDraft()
+      void notifyBackgroundExecution()
+    }
+
+    const handlePageHide = () => {
+      persistExecutionDraft()
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+    window.addEventListener("pagehide", handlePageHide)
+    window.addEventListener("beforeunload", handlePageHide)
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
+      window.removeEventListener("pagehide", handlePageHide)
+      window.removeEventListener("beforeunload", handlePageHide)
+    }
+  }, [isInProgress, persistExecutionDraft, startedAt])
+
   async function resolveExecutionPhotoUrl() {
     if (photoFile && user?.uid) {
       setIsUploadingPhoto(true)
@@ -410,6 +629,19 @@ export function WorkoutExecutionForm({
 
     if (workout) {
       setExecutedExercises(createExecutedExercises(workout))
+    }
+  }
+
+  async function enableBackgroundNotification() {
+    if (typeof Notification === "undefined" || Notification.permission !== "default") {
+      return
+    }
+
+    setIsRequestingNotificationPermission(true)
+    try {
+      await Notification.requestPermission()
+    } finally {
+      setIsRequestingNotificationPermission(false)
     }
   }
 
@@ -489,6 +721,8 @@ export function WorkoutExecutionForm({
     setShowRepeatConfirm(false)
     setShowReceipt(true)
     setExecutedExercises(workoutFromSelection ? createExecutedExercises(workoutFromSelection) : [])
+    setDraftRestoredAt(null)
+    clearExecutionDraft()
   }
 
   async function saveManualExecuted() {
@@ -721,6 +955,31 @@ export function WorkoutExecutionForm({
           <div className="mt-2 inline-flex items-center gap-2 rounded-md bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
             <ClockCountdown className="size-3.5" />
             Treino em andamento: {formatDurationMs(elapsedMs)}
+          </div>
+        ) : null}
+        {draftRestoredAt ? (
+          <p className="mt-2 text-xs text-muted-foreground">
+            Rascunho recuperado automaticamente ({formatDateTime(draftRestoredAt)}).
+          </p>
+        ) : null}
+        {isInProgress ? (
+          <div className="mt-2 space-y-1">
+            {typeof Notification !== "undefined" && Notification.permission === "default" ? (
+              <Button
+                type="button"
+                size="xs"
+                variant="outline"
+                onClick={() => void enableBackgroundNotification()}
+                disabled={isRequestingNotificationPermission}
+              >
+                {isRequestingNotificationPermission ? "Ativando..." : "Ativar alerta em background"}
+              </Button>
+            ) : null}
+            {typeof Notification !== "undefined" && Notification.permission === "granted" ? (
+              <p className="text-[11px] text-muted-foreground">
+                Alertas ativos: ao sair do app, enviamos uma notificacao local confirmando que o treino foi salvo.
+              </p>
+            ) : null}
           </div>
         ) : null}
       </div>

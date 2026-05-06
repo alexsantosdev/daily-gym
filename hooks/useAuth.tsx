@@ -9,11 +9,17 @@ import {
   type ReactNode,
 } from "react"
 import {
+  browserLocalPersistence,
+  browserSessionPersistence,
   createUserWithEmailAndPassword,
+  indexedDBLocalPersistence,
+  inMemoryPersistence,
   onAuthStateChanged,
+  setPersistence,
   signInWithEmailAndPassword,
   signOut,
   updateProfile,
+  type Auth,
   type User,
 } from "firebase/auth"
 
@@ -30,6 +36,24 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
+async function configureAuthPersistence(auth: Auth) {
+  const candidates = [
+    indexedDBLocalPersistence,
+    browserLocalPersistence,
+    browserSessionPersistence,
+    inMemoryPersistence,
+  ]
+
+  for (const candidate of candidates) {
+    try {
+      await setPersistence(auth, candidate)
+      return
+    } catch {
+      continue
+    }
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -41,12 +65,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const { auth } = assertFirebaseConfigured()
-    const unsubscribe = onAuthStateChanged(auth, (nextUser) => {
-      setUser(nextUser)
-      setIsLoading(false)
-    })
+    let didCancel = false
+    let unsubscribe: (() => void) | null = null
 
-    return () => unsubscribe()
+    const bootstrapAuth = async () => {
+      try {
+        await configureAuthPersistence(auth)
+      } finally {
+        if (didCancel) {
+          return
+        }
+
+        unsubscribe = onAuthStateChanged(auth, (nextUser) => {
+          setUser(nextUser)
+          setIsLoading(false)
+        })
+      }
+    }
+
+    void bootstrapAuth()
+
+    return () => {
+      didCancel = true
+      unsubscribe?.()
+    }
   }, [])
 
   const value = useMemo<AuthContextValue>(

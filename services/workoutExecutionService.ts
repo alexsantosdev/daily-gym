@@ -153,12 +153,18 @@ export async function updateWorkoutExecution(
 ) {
   const { db } = assertFirebaseConfigured()
   const durationMinutes = computeDurationMinutes(input.startedAt, input.finishedAt)
-  const resolvedDate = resolveExecutionDate({
-    startedAt: input.startedAt,
-    checkinAt: input.checkinAt,
-    finishedAt: input.finishedAt,
-    checkoutAt: input.checkoutAt,
-  })
+  const hasDateHints = Boolean(
+    input.date || input.startedAt || input.checkinAt || input.finishedAt || input.checkoutAt
+  )
+  const resolvedDate = hasDateHints
+    ? resolveExecutionDate({
+        date: input.date,
+        startedAt: input.startedAt,
+        checkinAt: input.checkinAt,
+        finishedAt: input.finishedAt,
+        checkoutAt: input.checkoutAt,
+      })
+    : undefined
   const payload = stripUndefinedDeep({
     ...input,
     userId,

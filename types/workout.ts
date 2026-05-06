@@ -146,6 +146,7 @@ export interface CreateWorkoutExecutionInput {
 }
 
 export interface UpdateWorkoutExecutionInput {
+  date?: string
   startedAt?: string
   finishedAt?: string
   status?: WorkoutExecutionStatus

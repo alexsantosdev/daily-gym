@@ -1,0 +1,9 @@
+{
+  "name": "Daily Gym",
+  "short_name": "DailyGym",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#d12b8f",
+  "lang": "pt-BR"
+}

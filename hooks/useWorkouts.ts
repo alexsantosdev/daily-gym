@@ -177,10 +177,42 @@ export function useWorkouts(userId?: string, userProfile?: WorkoutUserProfile) {
         return
       }
 
+      const currentExecution = executions.find((execution) => execution.id === executionId)
       await updateWorkoutExecution(executionId, userId, input)
+
+      if (currentExecution) {
+        const mergedExecution: WorkoutExecution = {
+          ...currentExecution,
+          ...input,
+          date: input.date ?? currentExecution.date,
+          updatedAt: new Date().toISOString(),
+        }
+
+        const executionWorkout = workouts.find((workout) => workout.id === mergedExecution.workoutId) ?? null
+        const executionPlan = plans.find((plan) => plan.id === mergedExecution.planId) ?? null
+
+        await syncWorkoutExecutionToGroups({
+          userId,
+          userName: userProfile?.displayName || userProfile?.email,
+          userPhotoURL: userProfile?.photoURL,
+          execution: mergedExecution,
+          plan: executionPlan,
+          workout: executionWorkout,
+        })
+      }
+
       await refresh()
     },
-    [refresh, userId]
+    [
+      executions,
+      plans,
+      refresh,
+      userId,
+      userProfile?.displayName,
+      userProfile?.email,
+      userProfile?.photoURL,
+      workouts,
+    ]
   )
 
   const removeExecutionEntry = useCallback(
